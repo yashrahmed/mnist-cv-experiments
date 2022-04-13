@@ -1,26 +1,37 @@
-from collections import defaultdict
-from functools import partial
-from glob import glob
-
 import cv2
+from cv2.xfeatures2d import BriefDescriptorExtractor_create
+
+from common.func_utils import compose_n
+from common.img_utils import build_image_lookup
 
 
-def build_image_lookup(
-        prefix='/home/yashrahmed/Documents/datasets/kaggle-mnist-as-images/trainingSample/trainingSample'):
-    img_path_lookup = defaultdict(list)
-    for digit_folder_path in glob(f'{prefix}/*'):
-        digit = digit_folder_path.split('/')[-1]
-        for digit_image_path in glob(f'{digit_folder_path}/*'):
-            img_path_lookup[digit].append(digit_image_path)
-    return partial(load_image, img_path_lookup=img_path_lookup)
-
-
-def load_image(digit, img_num, img_path_lookup):
-    img_path = img_path_lookup[str(digit)][img_num]
-    return cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2GRAY)
+def create_brief_extractor_pipeline(desc_size=32):
+    """
+        OpenCV indirectly imposes a size restriction.
+        See https://github.com/opencv/opencv_contrib/blob/342f8924cca88fe6ce979024b7776f6815c89978/modules/xfeatures2d/src/brief.cpp#L249
+        //Remove keypoints very close to the border
+        KERNEL_SIZE=48 and PATCH_SIZE=9
+        KeyPointsFilter::runByImageBorder(keypoints, image.size(), PATCH_SIZE/2 + KERNEL_SIZE/2);
+        Also see https://github.com/opencv/opencv_contrib/blob/master/modules/xfeatures2d/src/generated_32.i
+        1. OpenCV does not do pixel comparison. Instead it compares differences of cumulative gray values
+           b/w small image patches.
+        2. Integral image are used for #1.
+        3. OpenCV supports 16, 32 and 64 BYTE BRIEF descriptors. Each value in the descriptor array is an 8-bit signature.
+        4. Encoding each value in the descriptor to binary and concatenating will give the complete descriptor.
+    """
+    resize_dims = (60, 60)
+    fixed_keypoint = [cv2.KeyPoint(30, 30, 0)]  # A single Keypoint fixed at the center of the image.
+    extractor = BriefDescriptorExtractor_create(desc_size)
+    operations = [
+        lambda img: cv2.resize(img, resize_dims),  # Resize image to a standard size
+        lambda img: extractor.compute(img, fixed_keypoint)  # extract feature for a single fixed keypoint
+    ]
+    return compose_n(operations)
 
 
 if __name__ == '__main__':
+    extract_brief = create_brief_extractor_pipeline(16)
     lookup = build_image_lookup()
-    cv2.imshow('img', lookup(3, 23))
-    cv2.waitKey(0)
+    image = lookup(3, 23)
+    feature = extract_brief(image)
+    print('here')

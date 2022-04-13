@@ -1,0 +1,20 @@
+from collections import defaultdict
+from functools import partial
+from glob import glob
+
+import cv2
+
+
+def build_image_lookup(
+        prefix='/home/yashrahmed/Documents/datasets/kaggle-mnist-as-images/trainingSample/trainingSample'):
+    img_path_lookup = defaultdict(list)
+    for digit_folder_path in glob(f'{prefix}/*'):
+        digit = digit_folder_path.split('/')[-1]
+        for digit_image_path in glob(f'{digit_folder_path}/*'):
+            img_path_lookup[digit].append(digit_image_path)
+    return partial(load_image, img_path_lookup=img_path_lookup)
+
+
+def load_image(digit, img_idx, img_path_lookup):
+    img_path = img_path_lookup[str(digit)][img_idx]
+    return cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2GRAY)
