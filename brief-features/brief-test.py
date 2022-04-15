@@ -1,11 +1,14 @@
+from functools import partial
+
 import cv2
+import numpy as np
 from cv2.xfeatures2d import BriefDescriptorExtractor_create
 
 from common.func_utils import compose_n
-from common.img_utils import build_image_lookup
+from common.img_utils import build_image_lookup, show_images
 
 
-def create_brief_extractor_pipeline(desc_size=32):
+def create_brief_extractor_pipeline(desc_size=16):
     """
         OpenCV indirectly imposes a size restriction.
         See https://github.com/opencv/opencv_contrib/blob/342f8924cca88fe6ce979024b7776f6815c89978/modules/xfeatures2d/src/brief.cpp#L249
@@ -24,14 +27,22 @@ def create_brief_extractor_pipeline(desc_size=32):
     extractor = BriefDescriptorExtractor_create(desc_size)
     operations = [
         lambda img: cv2.resize(img, resize_dims),  # Resize image to a standard size
-        lambda img: extractor.compute(img, fixed_keypoint)  # extract feature for a single fixed keypoint
+        lambda img: extractor.compute(img, fixed_keypoint)[1]  # extract feature for a single fixed keypoint
     ]
     return compose_n(operations)
 
 
+def hamming_dist(v1, v2):
+    return np.sum(np.unpackbits(v1 ^ v2))
+
+
 if __name__ == '__main__':
-    extract_brief = create_brief_extractor_pipeline(16)
+    extract_brief = create_brief_extractor_pipeline()
     lookup = build_image_lookup()
-    image = lookup(3, 23)
-    feature = extract_brief(image)
-    print('here')
+    idxs = [(3, 41), (3, 45), (3, 23), (3, 34), (1, 1), (2, 21), (4, 11), (5, 15), (6, 56), (7, 36), (8, 25), (9, 44)]
+    images = list(map(lookup, idxs))
+    features = list(map(extract_brief, images))
+    distances = list(map(partial(hamming_dist, features[0]), features))
+    print('-------------- hamming distances --------------')
+    print(distances)
+    show_images(images)
