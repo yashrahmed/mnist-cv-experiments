@@ -1,5 +1,3 @@
-from functools import partial
-
 import cv2
 import numpy as np
 from cv2.xfeatures2d import BriefDescriptorExtractor_create
@@ -26,13 +24,13 @@ def extract_brief(images, desc_size=16):
     fixed_keypoint = [cv2.KeyPoint(30, 30, 0)]  # A single Keypoint fixed at the center of the image.
     extractor = BriefDescriptorExtractor_create(desc_size)
 
-    brief_features = list(
-        map(lambda image: extractor.compute(cv2.resize(image, resize_dims), fixed_keypoint)[1], images))
+    resized_imgs = [cv2.resize(img, resize_dims) for img in images.flat]
+    brief_features = [extractor.compute(img, fixed_keypoint)[1] for img in resized_imgs]
     return np.reshape(np.array(brief_features), (len(images), desc_size))
 
 
-def euclidean_dist(img1, img2):
-    return norm(img1 - img2)
+def euclidean_dist(ref_image, images):
+    return np.array([norm(ref_image - img) for img in images.flat])
 
 
 def hamming_dist(ref_vector, vectors):
@@ -46,15 +44,14 @@ def scale_distances(distances, low=0, high=10):
 
 
 if __name__ == '__main__':
-    # extract_brief = create_brief_extractor_pipeline()
     dataset = load_dataset()
     idxs = [210, 105, 55, 551]  # @ToDo figure out lookup
-    images = dataset['image'][idxs].values
-    features = extract_brief(images)
+    loaded_images = dataset['image'][idxs].values
+    features = extract_brief(loaded_images)
     feature_ham_distances = hamming_dist(features[[0]], features)
-    img_euc_distance = np.array(list(map(partial(euclidean_dist, images[0]), images)))
+    img_euc_distance = euclidean_dist(loaded_images[0], loaded_images)
     print('-------------- Hamming distances b/w feature --------------')
     print(scale_distances(feature_ham_distances))
     print('-------------- Euclidean distance b/w feature --------------')
     print(scale_distances(img_euc_distance))
-    show_images(images)
+    show_images(loaded_images)
