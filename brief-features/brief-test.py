@@ -5,7 +5,7 @@ import numpy as np
 from cv2.xfeatures2d import BriefDescriptorExtractor_create
 from numpy.linalg import norm
 
-from common.utils import load_dataset, show_images, load_image
+from common.utils import load_dataset, show_images
 
 
 def extract_brief(images, desc_size=16):
@@ -48,8 +48,8 @@ def scale_distances(distances, low=0, high=10):
 if __name__ == '__main__':
     # extract_brief = create_brief_extractor_pipeline()
     dataset = load_dataset()
-    idxs = [210, 105, 55, 551] # @ToDo figure out lookup
-    images = list(map(load_image, dataset['img_path'][idxs].values))
+    idxs = [210, 105, 55, 551]  # @ToDo figure out lookup
+    images = dataset['image'][idxs].values
     features = extract_brief(images)
     feature_ham_distances = hamming_dist(features[[0]], features)
     img_euc_distance = np.array(list(map(partial(euclidean_dist, images[0]), images)))

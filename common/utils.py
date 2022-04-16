@@ -8,9 +8,11 @@ import pandas as pd
 def load_dataset(prefix='/home/yashrahmed/Documents/datasets/kaggle-mnist-as-images/trainingSample/trainingSample'):
     img_file_paths = get_dataset_file_paths(prefix)
     image_labels = list(map(lambda file_path: int(file_path.split('/')[-2]), img_file_paths))
+    images = pd.Series(map(load_image, img_file_paths))
     df = pd.DataFrame({
         'label': image_labels,
-        'img_path': img_file_paths
+        'img_path': img_file_paths,
+        'image': images
     })
     return df
 
