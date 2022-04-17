@@ -6,7 +6,7 @@ from numpy.linalg import norm
 from common.utils import load_dataset, show_images
 
 
-def extract_brief(images, desc_size=16):
+def extract_brief(dataframe, desc_size=16):
     """
         OpenCV indirectly imposes a size restriction.
         See https://github.com/opencv/opencv_contrib/blob/342f8924cca88fe6ce979024b7776f6815c89978/modules/xfeatures2d/src/brief.cpp#L249
@@ -24,17 +24,22 @@ def extract_brief(images, desc_size=16):
     fixed_keypoint = [cv2.KeyPoint(30, 30, 0)]  # A single Keypoint fixed at the center of the image.
     extractor = BriefDescriptorExtractor_create(desc_size)
 
+    images = dataframe['image'].values
     resized_imgs = [cv2.resize(img, resize_dims) for img in images.flat]
-    brief_features = [extractor.compute(img, fixed_keypoint)[1] for img in resized_imgs]
-    return np.reshape(np.array(brief_features), (len(images), desc_size))
+    return [extractor.compute(img, fixed_keypoint)[1] for img in resized_imgs]
 
 
-def euclidean_dist(ref_image, images):
+def euclidean_dist(dataframe, ref_idx=0):
+    images = dataframe['image'][idxs].values
+    ref_image = images[ref_idx]
     return np.array([norm(ref_image - img) for img in images.flat])
 
 
-def hamming_dist(ref_vector, vectors):
+def hamming_dist(dataframe, ref_idx=0):
+    features = dataframe['features'].values
+    vectors = np.array([x[0] for x in features.flat])
     n_rows = vectors.shape[0]
+    ref_vector = vectors[[ref_idx]]
     ref_vector_repeated = np.repeat(ref_vector, n_rows, axis=0)
     return np.sum(np.unpackbits(ref_vector_repeated ^ vectors, axis=1), axis=1)
 
@@ -46,12 +51,17 @@ def scale_distances(distances, low=0, high=10):
 if __name__ == '__main__':
     dataset = load_dataset()
     idxs = [210, 105, 55, 551]  # @ToDo figure out lookup
-    loaded_images = dataset['image'][idxs].values
-    features = extract_brief(loaded_images)
-    feature_ham_distances = hamming_dist(features[[0]], features)
-    img_euc_distance = euclidean_dist(loaded_images[0], loaded_images)
+    subset = dataset.iloc[idxs].copy()
+
+    brief_features = extract_brief(subset)
+    subset['features'] = brief_features
+
+    feature_ham_distances = hamming_dist(subset)
+    img_euc_distance = euclidean_dist(subset)
     print('-------------- Hamming distances b/w feature --------------')
     print(scale_distances(feature_ham_distances))
     print('-------------- Euclidean distance b/w feature --------------')
     print(scale_distances(img_euc_distance))
+
+    loaded_images = subset['image'][idxs].values
     show_images(loaded_images)
