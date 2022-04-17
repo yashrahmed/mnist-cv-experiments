@@ -1,9 +1,14 @@
+from functools import reduce
+
 import cv2
 import numpy as np
 from cv2.xfeatures2d import BriefDescriptorExtractor_create
 from numpy.linalg import norm
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
-from common.utils import load_dataset, show_images
+from common.dataset_utils import load_dataset
+from common.plot_utils import scatter_plot
 
 
 def extract_brief(dataset, desc_size=16):
@@ -37,31 +42,58 @@ def euclidean_dist(dataset, ref_idx=0):
     return norm(ref_image_repeated - images, axis=(1, 2))
 
 
+# flatten a N-d vector into a 2-d vector with the same # of rows
+def flatten_inner(nd_vector):
+    dims = list(nd_vector.shape)
+    row = dims.pop(0)
+    num_elems = reduce(lambda prod, i: prod * i, dims, 1)
+    return nd_vector.reshape((row, num_elems))
+
+
 def hamming_dist(dataset, ref_idx=0):
-    vectors = dataset.get_attr('features')
+    vectors = dataset.get_attr('feature')
     n_rows = vectors.shape[0]
     ref_vector = vectors[[ref_idx]]
     ref_vector_repeated = np.repeat(ref_vector, n_rows, axis=0)
     return np.sum(np.unpackbits(ref_vector_repeated ^ vectors, axis=1), axis=1)
 
 
+def run_pca(input_data, n_comp=2):
+    scaler = StandardScaler().fit(input_data)
+    pca = PCA(n_components=n_comp)
+    result = pca.fit(scaler.transform(input_data)).transform(input_data)
+    return pca, result
+
+
+def run_pca_dataset(dataset, feat_key, n_comp=2):
+    return run_pca(flatten_inner(dataset.get_attr(feat_key)), n_comp=n_comp)
+
+
 def scale_distances(distances, low=0, high=10):
     return np.interp(distances, (distances.min(), distances.max()), (low, high)).astype(np.uint8)
 
 
+def _main():
+    dataset = load_dataset()
+
+    brief_features = extract_brief(dataset)
+    dataset.add_attr('feature', brief_features)
+
+    labels = dataset.get_attr('label')
+
+    pca_raw_handle, pca_raw_results = run_pca_dataset(dataset, feat_key='image')
+    print(f'pca on raw images -- {pca_raw_handle.explained_variance_ratio_ * 100}')
+    scatter_plot(pca_raw_results, labels, 'PCA on Raw')
+
+    pca_feat_handle, pca_feat_results = run_pca_dataset(dataset, feat_key='feature')
+    print(f'pca on brief features -- {pca_feat_handle.explained_variance_ratio_ * 100}')
+    plot_ref = scatter_plot(pca_feat_results, labels, 'PCA on BRIEF')
+
+    plot_ref.show()
+
+    # loaded_images = dataset.get_attr('image')
+    # show_images(loaded_images)
+
+
 if __name__ == '__main__':
-    idxs = [210, 105, 55, 551]  # @ToDo figure out lookup
-    subset = load_dataset().get_subset(idxs)
-
-    brief_features = extract_brief(subset)
-    subset.add_attr('features', brief_features)
-
-    feature_ham_distances = hamming_dist(subset)
-    img_euc_distance = euclidean_dist(subset)
-    print('-------------- Hamming distances b/w feature --------------')
-    print(scale_distances(feature_ham_distances))
-    print('-------------- Euclidean distance b/w feature --------------')
-    print(scale_distances(img_euc_distance))
-
-    loaded_images = subset.get_attr('image')
-    show_images(loaded_images)
+    _main()

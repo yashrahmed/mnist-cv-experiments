@@ -1,7 +1,8 @@
 from glob import glob
 
-import cv2
 import numpy as np
+
+from common.img_utils import load_image
 
 
 class Dataset:
@@ -32,13 +33,3 @@ def load_dataset(prefix='/home/yashrahmed/Documents/datasets/kaggle-mnist-as-ima
 
 def get_dataset_file_paths(folder_path):
     return glob(f'{folder_path}/*/*')
-
-
-def load_image(img_path):
-    return cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2GRAY)
-
-
-def show_images(images, disp_name='combined'):
-    out_image = np.concatenate(images, axis=1)
-    cv2.imshow(disp_name, out_image)
-    cv2.waitKey(0)
