@@ -5,6 +5,7 @@ import numpy as np
 from cv2.xfeatures2d import BriefDescriptorExtractor_create
 from numpy.linalg import norm
 from sklearn.decomposition import PCA
+from sklearn.manifold import MDS
 from sklearn.preprocessing import StandardScaler
 
 from common.dataset_utils import load_dataset
@@ -58,15 +59,45 @@ def hamming_dist(dataset, ref_idx=0):
     return np.sum(np.unpackbits(ref_vector_repeated ^ vectors, axis=1), axis=1)
 
 
+"""
+############## MDS ################
+"""
+
+
+def compute_mds_dissimilarity(input_data):
+    # input data is 2-d M*N array
+    return np.sum(np.unpackbits(input_data[:, None, :] ^ input_data[None, :, :], axis=2), axis=2)
+
+
+def run_mds_on_brief(dataset, n_comp=2):
+    input_data = dataset.get_attr('feature')
+    diss_matrix = compute_mds_dissimilarity(input_data)
+    embedding = MDS(n_components=n_comp, dissimilarity='precomputed')
+    return embedding.fit_transform(diss_matrix)
+
+
+def run_mds_on_dataset(dataset, feat_key, n_comp=2):
+    input_data = dataset.get_attr(feat_key)
+    txfm_data = StandardScaler().fit_transform(flatten_inner(input_data))
+    embedding = MDS(n_components=n_comp)
+    return embedding.fit_transform(txfm_data)
+
+
+"""
+############## PCA ################
+"""
+
+
 def run_pca(input_data, n_comp=2):
-    scaler = StandardScaler().fit(input_data)
     pca = PCA(n_components=n_comp)
-    result = pca.fit(scaler.transform(input_data)).transform(input_data)
+    result = pca.fit_transform(input_data)
     return pca, result
 
 
-def run_pca_dataset(dataset, feat_key, n_comp=2):
-    return run_pca(flatten_inner(dataset.get_attr(feat_key)), n_comp=n_comp)
+def run_pca_on_dataset(dataset, feat_key, n_comp=2):
+    input_data = dataset.get_attr(feat_key)
+    txfm_data = StandardScaler().fit_transform(flatten_inner(input_data))
+    return run_pca(txfm_data, n_comp=n_comp)
 
 
 def scale_distances(distances, low=0, high=10):
@@ -81,13 +112,22 @@ def _main():
 
     labels = dataset.get_attr('label')
 
-    pca_raw_handle, pca_raw_results = run_pca_dataset(dataset, feat_key='image')
+    pca_raw_handle, pca_raw_results = run_pca_on_dataset(dataset, feat_key='image')
     print(f'pca on raw images -- {pca_raw_handle.explained_variance_ratio_ * 100}')
     scatter_plot(pca_raw_results, labels, 'PCA on Raw')
 
-    pca_feat_handle, pca_feat_results = run_pca_dataset(dataset, feat_key='feature')
+    pca_feat_handle, pca_feat_results = run_pca_on_dataset(dataset, feat_key='feature')
     print(f'pca on brief features -- {pca_feat_handle.explained_variance_ratio_ * 100}')
     plot_ref = scatter_plot(pca_feat_results, labels, 'PCA on BRIEF')
+
+    mds_raw_results = run_mds_on_dataset(dataset, feat_key='image')
+    scatter_plot(mds_raw_results, labels, 'MDS on Raw')
+
+    mds_raw_results = run_mds_on_dataset(dataset, feat_key='feature')
+    scatter_plot(mds_raw_results, labels, 'MDS on BRIEF (euclidean)')
+
+    mds_feat_results = run_mds_on_brief(dataset)
+    plot_ref = scatter_plot(mds_feat_results, labels, 'MDS on BRIEF (hamming**)')
 
     plot_ref.show()
 
