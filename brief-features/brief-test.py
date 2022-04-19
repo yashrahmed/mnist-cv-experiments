@@ -5,7 +5,7 @@ import numpy as np
 from cv2.xfeatures2d import BriefDescriptorExtractor_create
 from numpy.linalg import norm
 from sklearn.decomposition import PCA
-from sklearn.feature_selection import VarianceThreshold
+from sklearn.feature_selection import VarianceThreshold, SelectKBest, chi2
 from sklearn.manifold import MDS
 from sklearn.preprocessing import StandardScaler
 
@@ -74,8 +74,8 @@ def compute_mds_dissimilarity(input_data):
     return np.sum(np.unpackbits(input_data[:, None, :] ^ input_data[None, :, :], axis=2), axis=2)
 
 
-def run_mds_on_brief(dataset, n_comp=2):
-    input_data = dataset.get_attr('feature')
+def run_mds_on_brief(dataset, feat_key, n_comp=2):
+    input_data = dataset.get_attr(feat_key)
     diss_matrix = compute_mds_dissimilarity(input_data)
     embedding = MDS(n_components=n_comp, dissimilarity='precomputed')
     return embedding.fit_transform(diss_matrix)
@@ -116,7 +116,7 @@ def run_pca_on_brief(dataset, feat_key, n_comp=2):
 """
 
 
-def apply_variance_threshold(dataset, p=0.8):
+def select_with_variance_threshold(dataset, p=0.8):
     """
     Boolean features are Bernoulli random variables, and the variance of such variables is given by
     var(X) = p * (1 - p)
@@ -124,8 +124,15 @@ def apply_variance_threshold(dataset, p=0.8):
     """
     feature_data = dataset.get_attr('feature')
     sel = VarianceThreshold(threshold=(p * (1 - p)))
-    pruned_features = sel.fit_transform(np.unpackbits(feature_data, axis=1))
-    return np.packbits(pruned_features, axis=1)
+    selected_features = sel.fit_transform(np.unpackbits(feature_data, axis=1))
+    return np.packbits(selected_features, axis=1)
+
+
+def select_with_k_best(dataset, num_features=10):
+    feature_data = dataset.get_attr('feature')
+    labels = dataset.get_attr('label')
+    selected_features = SelectKBest(chi2, k=num_features).fit_transform(np.unpackbits(feature_data, axis=1), labels)
+    return np.packbits(selected_features, axis=1)
 
 
 """
@@ -137,29 +144,34 @@ def _main():
     dataset = load_dataset()
     labels = dataset.get_attr('label')
 
-    brief_features = extract_brief(dataset)
-    dataset.add_attr('feature', brief_features)
-
-    pruned_features = apply_variance_threshold(dataset, p=0.65)
-    dataset.add_attr('pruned_feature', pruned_features)
-
     pca_raw_handle, pca_raw_results = run_pca_on_images(dataset)
     print(f'pca on raw images -- {pca_raw_handle.explained_variance_ratio_ * 100}')
     scatter_plot(pca_raw_results, labels, 'PCA on Raw')
 
+    brief_features = extract_brief(dataset)
+    dataset.add_attr('feature', brief_features)
     pca_feat_handle, pca_feat_results = run_pca_on_brief(dataset, feat_key='feature')
     print(f'pca on brief features -- {pca_feat_handle.explained_variance_ratio_ * 100}')
     plot_ref = scatter_plot(pca_feat_results, labels, 'PCA on BRIEF')
 
-    pca_feat_handle, pca_feat_results = run_pca_on_brief(dataset, feat_key='pruned_feature')
+    # pruned_features = select_with_variance_threshold(dataset, p=0.65)
+    # dataset.add_attr('pruned_feature', pruned_features)
+    # pca_feat_handle, pca_feat_results = run_pca_on_brief(dataset, feat_key='pruned_feature')
+    # print(f'pca on selected brief features -- {pca_feat_handle.explained_variance_ratio_ * 100}')
+    # plot_ref = scatter_plot(pca_feat_results, labels, f'PCA on BRIEF (With Variance Threshold Selection)')
+
+    k_best_features = select_with_k_best(dataset, num_features=60)
+    dataset.add_attr('k_best_feature', k_best_features)
+    pca_feat_handle, pca_feat_results = run_pca_on_brief(dataset, feat_key='k_best_feature')
     print(f'pca on selected brief features -- {pca_feat_handle.explained_variance_ratio_ * 100}')
-    plot_ref = scatter_plot(pca_feat_results, labels, f'PCA on BRIEF (With Variance Threshold Selection)')
+    plot_ref = scatter_plot(pca_feat_results, labels, f'PCA on BRIEF (With K best feature select - Chi2)')
+
 
     # mds_raw_results = run_mds_on_images(dataset, feat_key='image')
     # scatter_plot(mds_raw_results, labels, 'MDS on Raw')
-    #
-    # mds_feat_results = run_mds_on_brief(dataset)
-    # plot_ref = scatter_plot(mds_feat_results, labels, 'MDS on BRIEF (hamming**)')
+
+    # mds_feat_results = run_mds_on_brief(dataset, feat_key='pruned_feature')
+    # plot_ref = scatter_plot(mds_feat_results, labels, 'MDS on BRIEF (Variance threshold)')
 
     plot_ref.show()
 
