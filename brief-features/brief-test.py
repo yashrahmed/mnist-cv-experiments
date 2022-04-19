@@ -76,7 +76,7 @@ def run_mds_on_brief(dataset, n_comp=2):
     return embedding.fit_transform(diss_matrix)
 
 
-def run_mds_on_dataset(dataset, feat_key, n_comp=2):
+def run_mds_on_images(dataset, feat_key, n_comp=2):
     input_data = dataset.get_attr(feat_key)
     txfm_data = StandardScaler().fit_transform(flatten_inner(input_data))
     embedding = MDS(n_components=n_comp)
@@ -94,9 +94,15 @@ def run_pca(input_data, n_comp=2):
     return pca, result
 
 
-def run_pca_on_dataset(dataset, feat_key, n_comp=2):
-    input_data = dataset.get_attr(feat_key)
+def run_pca_on_images(dataset, n_comp=2):
+    input_data = dataset.get_attr('image')
     txfm_data = StandardScaler().fit_transform(flatten_inner(input_data))
+    return run_pca(txfm_data, n_comp=n_comp)
+
+
+def run_pca_on_brief(dataset, n_comp=2):
+    feature_data = dataset.get_attr('feature')
+    txfm_data = StandardScaler().fit_transform(np.unpackbits(feature_data, axis=1))
     return run_pca(txfm_data, n_comp=n_comp)
 
 
@@ -112,22 +118,19 @@ def _main():
 
     labels = dataset.get_attr('label')
 
-    pca_raw_handle, pca_raw_results = run_pca_on_dataset(dataset, feat_key='image')
+    pca_raw_handle, pca_raw_results = run_pca_on_images(dataset)
     print(f'pca on raw images -- {pca_raw_handle.explained_variance_ratio_ * 100}')
     scatter_plot(pca_raw_results, labels, 'PCA on Raw')
 
-    pca_feat_handle, pca_feat_results = run_pca_on_dataset(dataset, feat_key='feature')
+    pca_feat_handle, pca_feat_results = run_pca_on_brief(dataset)
     print(f'pca on brief features -- {pca_feat_handle.explained_variance_ratio_ * 100}')
     plot_ref = scatter_plot(pca_feat_results, labels, 'PCA on BRIEF')
 
-    mds_raw_results = run_mds_on_dataset(dataset, feat_key='image')
-    scatter_plot(mds_raw_results, labels, 'MDS on Raw')
-
-    mds_raw_results = run_mds_on_dataset(dataset, feat_key='feature')
-    scatter_plot(mds_raw_results, labels, 'MDS on BRIEF (euclidean)')
-
-    mds_feat_results = run_mds_on_brief(dataset)
-    plot_ref = scatter_plot(mds_feat_results, labels, 'MDS on BRIEF (hamming**)')
+    # mds_raw_results = run_mds_on_images(dataset, feat_key='image')
+    # scatter_plot(mds_raw_results, labels, 'MDS on Raw')
+    #
+    # mds_feat_results = run_mds_on_brief(dataset)
+    # plot_ref = scatter_plot(mds_feat_results, labels, 'MDS on BRIEF (hamming**)')
 
     plot_ref.show()
 
