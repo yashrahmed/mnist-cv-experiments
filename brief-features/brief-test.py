@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from cv2.xfeatures2d import BriefDescriptorExtractor_create
 from numpy.linalg import norm
+from numpy.random import seed
 from sklearn.decomposition import PCA
 from sklearn.feature_selection import VarianceThreshold, SelectKBest, chi2
 from sklearn.manifold import MDS
@@ -70,6 +71,7 @@ def scale_feature(input_array):
 def unpack_bits(input_array):
     return np.unpackbits(input_array, axis=1)
 
+
 """
 ############## MDS ################
 """
@@ -128,6 +130,50 @@ def select_with_k_best(feature_data, labels, num_features=10):
 """
 
 
+def run_mds_experiments(**kwargs):
+    images = kwargs.get('image')
+    labels = kwargs.get('labels')
+    brief_features = kwargs.get('brief_features')
+    pruned_features = kwargs.get('pruned_features')
+    k_best_features = kwargs.get('k_best_features')
+
+    mds_raw_results = run_mds_euclidean(scale_feature(flatten_inner(images)))
+    scatter_plot(mds_raw_results, labels, 'MDS on Raw')
+
+    mds_feat_results = run_mds_hamming(brief_features)
+    scatter_plot(mds_feat_results, labels, 'MDS on BRIEF (hamming**)')
+
+    mds_feat_results = run_mds_hamming(pruned_features)
+    scatter_plot(mds_feat_results, labels, 'Variance Threshold')
+
+    mds_feat_results = run_mds_hamming(k_best_features)
+    return scatter_plot(mds_feat_results, labels, 'K best selected')
+
+
+def run_pca_experiments(**kwargs):
+    images = kwargs.get('image')
+    labels = kwargs.get('labels')
+    brief_features = kwargs.get('brief_features')
+    pruned_features = kwargs.get('pruned_features')
+    k_best_features = kwargs.get('k_best_features')
+
+    pca_raw_handle, pca_raw_results = run_pca(scale_feature(flatten_inner(images)))
+    print(f'pca on raw images -- {pca_raw_handle.explained_variance_ratio_ * 100}')
+    scatter_plot(pca_raw_results, labels, 'PCA on Raw')
+
+    pca_ref, pca_feat_results = run_pca(scale_feature(unpack_bits(brief_features)))
+    print(f'pca on brief features -- {pca_ref.explained_variance_ratio_ * 100}')
+    scatter_plot(pca_feat_results, labels, 'PCA on BRIEF')
+
+    pca_ref, pca_feat_results = run_pca(scale_feature(unpack_bits(pruned_features)))
+    print(f'pca on selected brief features -- {pca_ref.explained_variance_ratio_ * 100}')
+    scatter_plot(pca_feat_results, labels, f'PCA on BRIEF (With Variance Threshold Selection)')
+
+    pca_ref, pca_feat_results = run_pca(scale_feature(unpack_bits(k_best_features)))
+    print(f'pca on selected brief features -- {pca_ref.explained_variance_ratio_ * 100}')
+    return scatter_plot(pca_feat_results, labels, f'PCA on BRIEF (With K best feature select - Chi2)')
+
+
 def _main():
     dataset = load_dataset()
     images = dataset.get_attr('image')
@@ -136,39 +182,24 @@ def _main():
     pruned_features = select_with_variance_threshold(brief_features, p=0.65)
     k_best_features = select_with_k_best(brief_features, labels, num_features=60)
 
-    pca_raw_handle, pca_raw_results = run_pca(scale_feature(flatten_inner(images)))
-    print(f'pca on raw images -- {pca_raw_handle.explained_variance_ratio_ * 100}')
-    plot_ref = scatter_plot(pca_raw_results, labels, 'PCA on Raw')
+    plot_ref = run_pca_experiments(image=images, labels=labels, brief_features=brief_features,
+                                   pruned_features=pruned_features,
+                                   k_best_features=k_best_features)
 
-    pca_ref, pca_feat_results = run_pca(scale_feature(unpack_bits(brief_features)))
-    print(f'pca on brief features -- {pca_ref.explained_variance_ratio_ * 100}')
-    plot_ref = scatter_plot(pca_feat_results, labels, 'PCA on BRIEF')
-
-    pca_ref, pca_feat_results = run_pca(scale_feature(unpack_bits(pruned_features)))
-    print(f'pca on selected brief features -- {pca_ref.explained_variance_ratio_ * 100}')
-    plot_ref = scatter_plot(pca_feat_results, labels, f'PCA on BRIEF (With Variance Threshold Selection)')
-
-    pca_ref, pca_feat_results = run_pca(scale_feature(unpack_bits(k_best_features)))
-    print(f'pca on selected brief features -- {pca_ref.explained_variance_ratio_ * 100}')
-    plot_ref = scatter_plot(pca_feat_results, labels, f'PCA on BRIEF (With K best feature select - Chi2)')
-
-    mds_raw_results = run_mds_euclidean(scale_feature(flatten_inner(images)))
-    plot_ref = scatter_plot(mds_raw_results, labels, 'MDS on Raw')
-
-    mds_feat_results = run_mds_hamming(brief_features)
-    plot_ref = scatter_plot(mds_feat_results, labels, 'MDS on BRIEF (hamming**)')
-
-    mds_feat_results = run_mds_hamming(pruned_features)
-    plot_ref = scatter_plot(mds_feat_results, labels, 'Variance Threshold')
-
-    mds_feat_results = run_mds_hamming(k_best_features)
-    plot_ref = scatter_plot(mds_feat_results, labels, 'K best selected')
+    plot_ref = run_mds_experiments(image=images, labels=labels, brief_features=brief_features,
+                                   pruned_features=pruned_features,
+                                   k_best_features=k_best_features)
 
     plot_ref.show()
+
+    cov_mat = np.cov(unpack_bits(brief_features), rowvar=False)
+    print('------- Covariance matrix of brief features. -------')
+    print(cov_mat)
 
     # loaded_images = dataset.get_attr('image')
     # show_images(loaded_images)
 
 
 if __name__ == '__main__':
+    seed(0)
     _main()
