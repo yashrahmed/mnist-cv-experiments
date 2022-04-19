@@ -5,6 +5,7 @@ import numpy as np
 from cv2.xfeatures2d import BriefDescriptorExtractor_create
 from numpy.linalg import norm
 from sklearn.decomposition import PCA
+from sklearn.feature_selection import VarianceThreshold
 from sklearn.manifold import MDS
 from sklearn.preprocessing import StandardScaler
 
@@ -59,6 +60,10 @@ def hamming_dist(dataset, ref_idx=0):
     return np.sum(np.unpackbits(ref_vector_repeated ^ vectors, axis=1), axis=1)
 
 
+def scale_distances(distances, low=0, high=10):
+    return np.interp(distances, (distances.min(), distances.max()), (low, high)).astype(np.uint8)
+
+
 """
 ############## MDS ################
 """
@@ -100,31 +105,55 @@ def run_pca_on_images(dataset, n_comp=2):
     return run_pca(txfm_data, n_comp=n_comp)
 
 
-def run_pca_on_brief(dataset, n_comp=2):
-    feature_data = dataset.get_attr('feature')
+def run_pca_on_brief(dataset, feat_key, n_comp=2):
+    feature_data = dataset.get_attr(feat_key)
     txfm_data = StandardScaler().fit_transform(np.unpackbits(feature_data, axis=1))
     return run_pca(txfm_data, n_comp=n_comp)
 
 
-def scale_distances(distances, low=0, high=10):
-    return np.interp(distances, (distances.min(), distances.max()), (low, high)).astype(np.uint8)
+"""
+############## Feature Selection ################
+"""
+
+
+def apply_variance_threshold(dataset, p=0.8):
+    """
+    Boolean features are Bernoulli random variables, and the variance of such variables is given by
+    var(X) = p * (1 - p)
+    The goal of variance threshold selection is to remove features that are only 0's or 1's more than p% of the time.
+    """
+    feature_data = dataset.get_attr('feature')
+    sel = VarianceThreshold(threshold=(p * (1 - p)))
+    pruned_features = sel.fit_transform(np.unpackbits(feature_data, axis=1))
+    return np.packbits(pruned_features, axis=1)
+
+
+"""
+############## Main ################
+"""
 
 
 def _main():
     dataset = load_dataset()
+    labels = dataset.get_attr('label')
 
     brief_features = extract_brief(dataset)
     dataset.add_attr('feature', brief_features)
 
-    labels = dataset.get_attr('label')
+    pruned_features = apply_variance_threshold(dataset, p=0.65)
+    dataset.add_attr('pruned_feature', pruned_features)
 
     pca_raw_handle, pca_raw_results = run_pca_on_images(dataset)
     print(f'pca on raw images -- {pca_raw_handle.explained_variance_ratio_ * 100}')
     scatter_plot(pca_raw_results, labels, 'PCA on Raw')
 
-    pca_feat_handle, pca_feat_results = run_pca_on_brief(dataset)
+    pca_feat_handle, pca_feat_results = run_pca_on_brief(dataset, feat_key='feature')
     print(f'pca on brief features -- {pca_feat_handle.explained_variance_ratio_ * 100}')
     plot_ref = scatter_plot(pca_feat_results, labels, 'PCA on BRIEF')
+
+    pca_feat_handle, pca_feat_results = run_pca_on_brief(dataset, feat_key='pruned_feature')
+    print(f'pca on selected brief features -- {pca_feat_handle.explained_variance_ratio_ * 100}')
+    plot_ref = scatter_plot(pca_feat_results, labels, f'PCA on BRIEF (With Variance Threshold Selection)')
 
     # mds_raw_results = run_mds_on_images(dataset, feat_key='image')
     # scatter_plot(mds_raw_results, labels, 'MDS on Raw')
