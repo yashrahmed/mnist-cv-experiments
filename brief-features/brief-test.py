@@ -13,6 +13,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 
 from common.dataset_utils import load_dataset
+from common.img_utils import show_images
 from common.plot_utils import scatter_plot
 
 SEED = 0
@@ -164,6 +165,24 @@ def run_knn_experiment_set(neighbors_values, brief_desc_size_values, images, lab
 
 
 """
+############## IMAGE AVERAGING ################
+"""
+
+
+def generate_average_images(images, labels):
+    digits = np.unique(labels)
+    average_images = []
+    for digit in digits:
+        mean_img = np.mean(images[labels == digit, :, :], axis=0).astype(np.uint8)
+        average_images.append(mean_img)
+    return average_images
+
+
+def run_image_averaging_experiment(images, labels):
+    avg_imgs = generate_average_images(images, labels)
+    show_images(avg_imgs)
+
+"""
 ############## Main ################
 """
 
@@ -243,7 +262,10 @@ def _main():
 
     # run_covariance_inspect_experiment(brief_features)
 
-    run_knn_experiment_set([1, 2, 3, 4, 5], [16, 32, 64], images, labels)
+    # run_knn_experiment_set([1, 2, 3, 4, 5], [16, 32, 64], images, labels)
+
+    run_image_averaging_experiment(images, labels)
+
 
     # loaded_images = dataset.get_attr('image')
     # show_images(loaded_images)
