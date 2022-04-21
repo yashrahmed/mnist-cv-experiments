@@ -8,10 +8,14 @@ from numpy.random import seed
 from sklearn.decomposition import PCA
 from sklearn.feature_selection import VarianceThreshold, SelectKBest, chi2
 from sklearn.manifold import MDS
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 
 from common.dataset_utils import load_dataset
 from common.plot_utils import scatter_plot
+
+SEED = 0
 
 
 def extract_brief(images, desc_size=16):
@@ -126,8 +130,48 @@ def select_with_k_best(feature_data, labels, num_features=10):
 
 
 """
+############## KNN ################
+"""
+
+
+def run_knn(train_data, train_label, test_data, test_label, neighbors=4):
+    knn = KNeighborsClassifier(n_neighbors=neighbors)
+    knn.fit(train_data, train_label)
+    pred_labels = knn.predict(test_data)
+    return (np.sum(test_label == pred_labels) / test_label.shape[0]) * 100
+
+
+def run_knn_experiment(neighbors, brief_desc_size, test_split_ratio, img_train, label_train, img_test, label_test,
+                       feat_train, feat_test):
+    baseline_acc = run_knn(flatten_inner(img_train), label_train, flatten_inner(img_train), label_train,
+                           neighbors=neighbors)
+    raw_img_acc = run_knn(flatten_inner(img_train), label_train, flatten_inner(img_test), label_test,
+                          neighbors=neighbors)
+    feat_acc = run_knn(feat_train, label_train, feat_test, label_test, neighbors=neighbors)
+    print(f'{test_split_ratio},{neighbors},{brief_desc_size},{baseline_acc},{raw_img_acc},{feat_acc}')
+
+
+def run_knn_experiment_set(neighbors_values, brief_desc_size_values, images, labels):
+    test_split_ratio = 0.3
+    img_train, img_test, label_train, label_test = split_dataset(images, labels, test_ratio=test_split_ratio)
+    print('test_split_ratio,neighbors,brief_desc_size,baseline_acc,raw_img_acc,feat_acc')
+    for brief_desc_size in brief_desc_size_values:
+        brief_features = extract_brief(images, desc_size=brief_desc_size)
+        feat_train, feat_test, _, _ = split_dataset(brief_features, labels, test_ratio=test_split_ratio)
+        for neighbors in neighbors_values:
+            run_knn_experiment(neighbors, brief_desc_size, test_split_ratio, img_train, label_train, img_test,
+                               label_test, feat_train, feat_test)
+
+
+"""
 ############## Main ################
 """
+
+
+def run_covariance_inspect_experiment(brief_features):
+    cov_mat = np.cov(unpack_bits(brief_features), rowvar=False)
+    print('------- Covariance matrix of brief features. -------')
+    print(cov_mat)
 
 
 def run_mds_experiments(**kwargs):
@@ -174,32 +218,37 @@ def run_pca_experiments(**kwargs):
     return scatter_plot(pca_feat_results, labels, f'PCA on BRIEF (With K best feature select - Chi2)')
 
 
+def split_dataset(images, labels, test_ratio=0.3):
+    return train_test_split(images, labels, test_size=test_ratio, random_state=SEED)
+
+
 def _main():
     dataset = load_dataset()
     images = dataset.get_attr('image')
     labels = dataset.get_attr('label')
-    brief_features = extract_brief(images)
-    pruned_features = select_with_variance_threshold(brief_features, p=0.65)
-    k_best_features = select_with_k_best(brief_features, labels, num_features=60)
+    brief_features = extract_brief(images, desc_size=64)
 
-    plot_ref = run_pca_experiments(image=images, labels=labels, brief_features=brief_features,
-                                   pruned_features=pruned_features,
-                                   k_best_features=k_best_features)
+    # pruned_features = select_with_variance_threshold(brief_features, p=0.65)
+    # k_best_features = select_with_k_best(brief_features, labels, num_features=60)
 
-    plot_ref = run_mds_experiments(image=images, labels=labels, brief_features=brief_features,
-                                   pruned_features=pruned_features,
-                                   k_best_features=k_best_features)
+    # plot_ref = run_pca_experiments(image=images, labels=labels, brief_features=brief_features,
+    #                                pruned_features=pruned_features,
+    #                                k_best_features=k_best_features)
+    #
+    # plot_ref = run_mds_experiments(image=images, labels=labels, brief_features=brief_features,
+    #                                pruned_features=pruned_features,
+    #                                k_best_features=k_best_features)
+    #
+    # plot_ref.show()
 
-    plot_ref.show()
+    # run_covariance_inspect_experiment(brief_features)
 
-    cov_mat = np.cov(unpack_bits(brief_features), rowvar=False)
-    print('------- Covariance matrix of brief features. -------')
-    print(cov_mat)
+    run_knn_experiment_set([2, 3, 4, 5], [16, 32, 64], images, labels)
 
     # loaded_images = dataset.get_attr('image')
     # show_images(loaded_images)
 
 
 if __name__ == '__main__':
-    seed(0)
+    seed(SEED)
     _main()
