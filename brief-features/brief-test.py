@@ -8,11 +8,12 @@ from numpy.random import seed
 from sklearn.decomposition import PCA
 from sklearn.feature_selection import VarianceThreshold, SelectKBest, chi2
 from sklearn.manifold import MDS
+from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 
-from common.dataset_utils import load_dataset
+from common.dataset_utils import load_actual_mnist, load_dataset
 from common.img_utils import show_images
 from common.plot_utils import scatter_plot
 
@@ -135,33 +136,52 @@ def select_with_k_best(feature_data, labels, num_features=10):
 """
 
 
-def run_knn(train_data, train_label, test_data, test_label, neighbors=4, metric='euclidean'):
-    knn = KNeighborsClassifier(n_neighbors=neighbors, metric=metric)
+def split_dataset(images, labels, test_ratio=0.3):
+    return train_test_split(images, labels, test_size=test_ratio, random_state=SEED)
+
+
+def run_knn(train_data, train_label, test_data, test_label, neighbors=4, metric='euclidean', weights='uniform',
+            algo='auto'):
+    knn = KNeighborsClassifier(n_neighbors=neighbors, metric=metric, weights=weights, algorithm=algo)
     knn.fit(train_data, train_label)
     pred_labels = knn.predict(test_data)
-    return (np.sum(test_label == pred_labels) / test_label.shape[0]) * 100
+    return accuracy_score(test_label, pred_labels) * 100
 
 
-def run_knn_experiment(neighbors, brief_desc_size, test_split_ratio, flat_img_train, label_train, flat_img_test,
+def run_knn_experiment(neighbors, brief_desc_size, test_split_ratio, weights, flat_img_train, label_train,
+                       flat_img_test,
                        label_test, feat_train, feat_test):
-    baseline_acc = run_knn(flat_img_train, label_train, flat_img_train, label_train, neighbors=neighbors)
-    raw_img_acc = run_knn(flat_img_train, label_train, flat_img_test, label_test, neighbors=neighbors)
-    feat_acc = run_knn(feat_train, label_train, feat_test, label_test, neighbors=neighbors, metric='hamming')
-    print(f'{test_split_ratio},{neighbors},{brief_desc_size},{baseline_acc},{raw_img_acc},{feat_acc}')
+    baseline_acc = run_knn(flat_img_train, label_train, flat_img_train, label_train, neighbors=neighbors,
+                           weights=weights)
+    raw_img_acc = run_knn(flat_img_train, label_train, flat_img_test, label_test, neighbors=neighbors, weights=weights)
+    feat_acc = run_knn(feat_train, label_train, feat_test, label_test, neighbors=neighbors, metric='hamming',
+                       weights=weights)
+    gain = feat_acc - raw_img_acc
+    print(f'{test_split_ratio},{weights},{neighbors},{brief_desc_size},{baseline_acc},{raw_img_acc},{feat_acc},{gain}')
 
 
-def run_knn_experiment_set(neighbors_values, brief_desc_size_values, images, labels):
+def run_knn_experiment_set(neighbors_values, weights_values, brief_desc_size_values, images, labels):
     test_split_ratio = 0.3
     img_train, img_test, label_train, label_test = split_dataset(images, labels, test_ratio=test_split_ratio)
     img_train = flatten_inner(img_train)  # standard scaling makes it worse
     img_test = flatten_inner(img_test)
-    print('test_split_ratio,neighbors,brief_desc_size,baseline_acc,raw_img_acc,feat_acc')
+    print('test_split_ratio,weights,neighbors,brief_desc_size,baseline_acc,raw_img_acc,feat_acc,gain')
     for brief_desc_size in brief_desc_size_values:
         brief_features = unpack_bits(extract_brief(images, desc_size=brief_desc_size))
         feat_train, feat_test, _, _ = split_dataset(brief_features, labels, test_ratio=test_split_ratio)
         for neighbors in neighbors_values:
-            run_knn_experiment(neighbors, brief_desc_size, test_split_ratio, img_train, label_train, img_test,
-                               label_test, feat_train, feat_test)
+            for weights in weights_values:
+                run_knn_experiment(neighbors, brief_desc_size, test_split_ratio, weights, img_train, label_train,
+                                   img_test,
+                                   label_test, feat_train, feat_test)
+
+
+def run_knn_on_full_mnist_raw_experiment():
+    n_neighbors = 3
+    train_images, train_labels, test_images, test_labels = load_actual_mnist()
+    accuracy = run_knn(flatten_inner(train_images), train_labels, flatten_inner(test_images), test_labels,
+                       neighbors=n_neighbors, weights='distance')
+    print(f'Classification accuracy for full dataset with raw images @ K={n_neighbors} is {accuracy}')
 
 
 """
@@ -181,6 +201,7 @@ def generate_average_images(images, labels):
 def run_image_averaging_experiment(images, labels):
     avg_imgs = generate_average_images(images, labels)
     show_images(avg_imgs)
+
 
 """
 ############## Main ################
@@ -237,10 +258,6 @@ def run_pca_experiments(**kwargs):
     return scatter_plot(pca_feat_results, labels, f'PCA on BRIEF (With K best feature select - Chi2)')
 
 
-def split_dataset(images, labels, test_ratio=0.3):
-    return train_test_split(images, labels, test_size=test_ratio, random_state=SEED)
-
-
 def _main():
     dataset = load_dataset()
     images = dataset.get_attr('image')
@@ -262,10 +279,9 @@ def _main():
 
     # run_covariance_inspect_experiment(brief_features)
 
-    # run_knn_experiment_set([1, 2, 3, 4, 5], [16, 32, 64], images, labels)
+    run_knn_experiment_set([1, 2, 3, 4, 5], ['uniform', 'distance'], [16, 32, 64], images, labels)
 
-    run_image_averaging_experiment(images, labels)
-
+    # run_image_averaging_experiment(images, labels)
 
     # loaded_images = dataset.get_attr('image')
     # show_images(loaded_images)
