@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 
-from common.dataset_utils import load_actual_mnist, load_dataset
+from common.dataset_utils import load_actual_mnist
 from common.img_utils import show_images
 from common.plot_utils import scatter_plot
 
@@ -176,12 +176,31 @@ def run_knn_experiment_set(neighbors_values, weights_values, brief_desc_size_val
                                    label_test, feat_train, feat_test)
 
 
-def run_knn_on_full_mnist_raw_experiment():
-    n_neighbors = 3
+def run_knn_on_full_mnist_raw_experiment(n_neighbors=3):
     train_images, train_labels, test_images, test_labels = load_actual_mnist()
     accuracy = run_knn(flatten_inner(train_images), train_labels, flatten_inner(test_images), test_labels,
                        neighbors=n_neighbors, weights='distance')
     print(f'Classification accuracy for full dataset with raw images @ K={n_neighbors} is {accuracy}')
+
+
+def run_knn_on_full_mnist_brief_experiment(n_neighbors=3, desc_size=16):
+    train_images, train_labels, test_images, test_labels = load_actual_mnist()
+    train_brief = extract_brief(train_images, desc_size=desc_size)
+    test_brief = extract_brief(test_images, desc_size=desc_size)
+    accuracy = run_knn(unpack_bits(train_brief), train_labels, unpack_bits(test_brief), test_labels,
+                       neighbors=n_neighbors, metric='hamming',
+                       weights='distance')
+    print(
+        f'Classification accuracy for full dataset using brief features of {desc_size} bytes @ K={n_neighbors} is {accuracy}')
+
+
+def run_knn_on_full_mnist_experiment(neighbors_values):
+    for neighbors in neighbors_values:
+        print(f'with {neighbors}NN ----------')
+        run_knn_on_full_mnist_raw_experiment(n_neighbors=neighbors)
+        run_knn_on_full_mnist_brief_experiment(n_neighbors=neighbors, desc_size=16)
+        run_knn_on_full_mnist_brief_experiment(n_neighbors=neighbors, desc_size=32)
+        run_knn_on_full_mnist_brief_experiment(n_neighbors=neighbors, desc_size=64)
 
 
 """
@@ -259,10 +278,10 @@ def run_pca_experiments(**kwargs):
 
 
 def _main():
-    dataset = load_dataset()
-    images = dataset.get_attr('image')
-    labels = dataset.get_attr('label')
-    brief_features = extract_brief(images)
+    # dataset = load_dataset()
+    # images = dataset.get_attr('image')
+    # labels = dataset.get_attr('label')
+    # brief_features = extract_brief(images)
 
     # pruned_features = select_with_variance_threshold(brief_features, p=0.65)
     # k_best_features = select_with_k_best(brief_features, labels, num_features=60)
@@ -279,7 +298,8 @@ def _main():
 
     # run_covariance_inspect_experiment(brief_features)
 
-    run_knn_experiment_set([1, 2, 3, 4, 5], ['uniform', 'distance'], [16, 32, 64], images, labels)
+    # run_knn_experiment_set([1, 2, 3, 4, 5], ['uniform', 'distance'], [16, 32, 64], images, labels)
+    run_knn_on_full_mnist_experiment([4])
 
     # run_image_averaging_experiment(images, labels)
 

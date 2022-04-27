@@ -1,0 +1,20 @@
+with 1NN ----------
+Classification accuracy for full dataset with raw images @ K=1 is 96.91
+Classification accuracy for full dataset using brief features of 16 bytes @ K=1 is 93.56
+Classification accuracy for full dataset using brief features of 32 bytes @ K=1 is 95.53
+Classification accuracy for full dataset using brief features of 64 bytes @ K=1 is 96.63000000000001
+with 2NN ----------
+Classification accuracy for full dataset with raw images @ K=2 is 96.91
+Classification accuracy for full dataset using brief features of 16 bytes @ K=2 is 93.5
+Classification accuracy for full dataset using brief features of 32 bytes @ K=2 is 95.61
+Classification accuracy for full dataset using brief features of 64 bytes @ K=2 is 96.61999999999999
+with 3NN ----------
+Classification accuracy for full dataset with raw images @ K=3 is 97.17
+Classification accuracy for full dataset using brief features of 16 bytes @ K=3 is 94.22
+Classification accuracy for full dataset using brief features of 32 bytes @ K=3 is 96.2
+Classification accuracy for full dataset using brief features of 64 bytes @ K=3 is 96.91
+with 4NN ----------
+Classification accuracy for full dataset with raw images @ K=4 is 97.14
+Classification accuracy for full dataset using brief features of 16 bytes @ K=4 is 94.35
+Classification accuracy for full dataset using brief features of 32 bytes @ K=4 is 96.27
+Classification accuracy for full dataset using brief features of 64 bytes @ K=4 is 97.0
