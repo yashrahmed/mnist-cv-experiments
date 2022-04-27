@@ -203,22 +203,34 @@ def run_knn_on_full_mnist_experiment(neighbors_values):
         run_knn_on_full_mnist_brief_experiment(n_neighbors=neighbors, desc_size=64)
 
 
+def run_knn_on_full_mnist_avg_images_brief_experiment(n_neighbors=3, desc_size=16):
+    train_images, train_labels, test_images, test_labels = load_actual_mnist()
+    avg_train_images, train_labels = generate_average_dataset(train_images, train_labels)
+    train_brief = extract_brief(avg_train_images, desc_size=desc_size)
+    test_brief = extract_brief(test_images, desc_size=desc_size)
+    accuracy = run_knn(unpack_bits(train_brief), train_labels, unpack_bits(test_brief), test_labels,
+                       neighbors=n_neighbors, metric='hamming',
+                       weights='distance')
+    print(
+        f'Classification accuracy for full dataset using brief features of {desc_size} on average images bytes @ K={n_neighbors} is {accuracy}')
+
+
 """
 ############## IMAGE AVERAGING ################
 """
 
 
-def generate_average_images(images, labels):
+def generate_average_dataset(images, labels):
     digits = np.unique(labels)
     average_images = []
     for digit in digits:
         mean_img = np.mean(images[labels == digit, :, :], axis=0).astype(np.uint8)
         average_images.append(mean_img)
-    return average_images
+    return np.array(average_images), digits
 
 
 def run_image_averaging_experiment(images, labels):
-    avg_imgs = generate_average_images(images, labels)
+    avg_imgs, _ = generate_average_dataset(images, labels)
     show_images(avg_imgs)
 
 
@@ -299,7 +311,8 @@ def _main():
     # run_covariance_inspect_experiment(brief_features)
 
     # run_knn_experiment_set([1, 2, 3, 4, 5], ['uniform', 'distance'], [16, 32, 64], images, labels)
-    run_knn_on_full_mnist_experiment([4])
+    # run_knn_on_full_mnist_experiment([4])
+    run_knn_on_full_mnist_avg_images_brief_experiment(n_neighbors=4, desc_size=32)
 
     # run_image_averaging_experiment(images, labels)
 
