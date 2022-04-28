@@ -12,6 +12,8 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
 
 from common.dataset_utils import load_actual_mnist
 from common.img_utils import show_images
@@ -216,6 +218,50 @@ def run_knn_on_full_mnist_avg_images_brief_experiment(n_neighbors=3, desc_size=1
 
 
 """
+############## Decision Tree ################
+"""
+
+
+def run_decision_tree_with_brief_experiment():
+    train_images, train_labels, test_images, test_labels = load_actual_mnist()
+    tree = DecisionTreeClassifier()
+    for desc_size in [16, 32, 64]:
+        train_brief = unpack_bits(extract_brief(train_images, desc_size=desc_size))
+        test_brief = unpack_bits(extract_brief(test_images, desc_size=desc_size))
+        tree.fit(train_brief, train_labels)
+        pred_labels = tree.predict(test_brief)
+        score = accuracy_score(test_labels, pred_labels) * 100
+        print(f'Classification accuracy with a decision tree on {desc_size}-byte brief features = {score}%')
+
+
+"""
+############## Support Vector Machines ################
+"""
+
+
+def run_svm_with_brief_experiment(kernel='linear'):
+    train_images, train_labels, test_images, test_labels = load_actual_mnist()
+    svm = SVC(max_iter=5000, kernel=kernel)
+    for desc_size in [16, 32, 64]:
+        train_brief = np.interp(unpack_bits(extract_brief(train_images, desc_size=desc_size)), [0, 1], [-1, 1])
+        test_brief = np.interp(unpack_bits(extract_brief(test_images, desc_size=desc_size)), [0, 1], [-1, 1])
+        svm.fit(train_brief, train_labels)
+        pred_labels = svm.predict(test_brief)
+        score = accuracy_score(test_labels, pred_labels) * 100
+        print(f'Classification accuracy with a svm on {desc_size}-byte brief features = {score}%')
+
+
+def run_svm_with_raw_images_experiment():
+    train_images, train_labels, test_images, test_labels = load_actual_mnist()
+    svm = SVC(max_iter=5000)
+    train_brief = scale_feature(flatten_inner(train_images))
+    test_brief = scale_feature(flatten_inner(test_images))
+    svm.fit(train_brief, train_labels)
+    pred_labels = svm.predict(test_brief)
+    score = accuracy_score(test_labels, pred_labels) * 100
+    print(f'Classification accuracy with a svm on raw images = {score}%')
+
+"""
 ############## IMAGE AVERAGING ################
 """
 
@@ -312,7 +358,10 @@ def _main():
 
     # run_knn_experiment_set([1, 2, 3, 4, 5], ['uniform', 'distance'], [16, 32, 64], images, labels)
     # run_knn_on_full_mnist_experiment([4])
-    run_knn_on_full_mnist_avg_images_brief_experiment(n_neighbors=4, desc_size=32)
+    # run_knn_on_full_mnist_avg_images_brief_experiment(n_neighbors=4, desc_size=32)
+    # run_decision_tree_with_brief_experiment()
+    run_svm_with_brief_experiment()
+    # run_svm_with_raw_images_experiment()
 
     # run_image_averaging_experiment(images, labels)
 

@@ -1,0 +1,10 @@
+RBF Kernel ----------
+Classification accuracy with a svm on raw images = 96.56%
+Classification accuracy with a svm on 16-byte brief features = 95.95%
+Classification accuracy with a svm on 32-byte brief features = 97.41%
+Classification accuracy with a svm on 64-byte brief features = 97.86%
+
+Linear Kernel ---------
+Classification accuracy with a svm on 16-byte brief features = 76.64%
+Classification accuracy with a svm on 32-byte brief features = 82.21%
+Classification accuracy with a svm on 64-byte brief features = 92.66%
