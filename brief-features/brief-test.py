@@ -16,8 +16,9 @@ from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
 from common.dataset_utils import load_actual_mnist
-from common.img_utils import show_images
+from common.img_utils import show_images, plot_brief_features_on_image
 from common.plot_utils import scatter_plot
+from parse_brief_coords import load_coords
 
 SEED = 0
 
@@ -261,6 +262,7 @@ def run_svm_with_raw_images_experiment():
     score = accuracy_score(test_labels, pred_labels) * 100
     print(f'Classification accuracy with a svm on raw images = {score}%')
 
+
 """
 ############## IMAGE AVERAGING ################
 """
@@ -335,6 +337,15 @@ def run_pca_experiments(**kwargs):
     return scatter_plot(pca_feat_results, labels, f'PCA on BRIEF (With K best feature select - Chi2)')
 
 
+def visualize_brief_experiment():
+    brief_coords = load_coords()
+    train_images, train_labels, test_images, test_labels = load_actual_mnist()
+    idxs = [0, 14, 45, 908, 12, 17]
+    img_with_briefs = [cv2.resize(plot_brief_features_on_image(image, brief_coords), (200, 200)) for image in
+                       train_images[idxs]]
+    show_images(img_with_briefs)
+
+
 def _main():
     # dataset = load_dataset()
     # images = dataset.get_attr('image')
@@ -360,7 +371,8 @@ def _main():
     # run_knn_on_full_mnist_experiment([4])
     # run_knn_on_full_mnist_avg_images_brief_experiment(n_neighbors=4, desc_size=32)
     # run_decision_tree_with_brief_experiment()
-    run_svm_with_brief_experiment()
+    # run_svm_with_brief_experiment()
+    visualize_brief_experiment()
     # run_svm_with_raw_images_experiment()
 
     # run_image_averaging_experiment(images, labels)
