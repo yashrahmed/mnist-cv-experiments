@@ -2,6 +2,13 @@ import cv2
 import numpy as np
 
 
+def draw_polygons_on_image(image, polygons):
+    image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    for polygon in polygons:
+        image = cv2.polylines(image, [polygon], True, (0, 255, 0), 1)
+    return image
+
+
 def show_images(images, disp_name='combined'):
     out_image = np.concatenate(images, axis=1)
     cv2.imshow(disp_name, out_image)
