@@ -8,6 +8,11 @@ def show_images(images, disp_name='combined'):
     cv2.waitKey(0)
 
 
+def show_image(image, disp_name='single'):
+    cv2.imshow(disp_name, image)
+    cv2.waitKey(0)
+
+
 def load_image(img_path):
     return cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2GRAY)
 
