@@ -1,11 +1,10 @@
 import cv2
 import numpy as np
-from numpy import arctan2
-from scipy.spatial.distance import pdist, squareform
 from sklearn.cluster import AgglomerativeClustering
 
 from common.dataset_utils import load_actual_mnist
 from common.plot_utils import scatter_plot
+from shape_context_desc import compute_shape_context_descriptor as get_sc
 
 
 def threshold_image(images, threshold=100):
@@ -36,18 +35,6 @@ def get_polygons(contours):
     return [get_polygon(contour) for contour in contours]
 
 
-def get_pairwise_dist(vec):
-    return squareform(pdist(vec))
-
-
-def get_pairwise_slope(vec):
-    xs = vec[:, 0:1]
-    ys = vec[:, 1:2]
-    dx = xs.transpose() - xs
-    dy = ys.transpose() - ys
-    return arctan2(dy, dx)
-
-
 if __name__ == '__main__':
     train_images, train_labels, _, _ = load_actual_mnist()
     # image_of_6 = train_images[train_labels == 4][1914]
@@ -59,6 +46,7 @@ if __name__ == '__main__':
     # run_clustering_on_image(th_image)
     # img = cv2.drawContours(image_of_6_col, det_contours, -1, (0, 0, 255), 1)
     # show_image(cv2.resize(img, (300, 300)))
-    print(get_pairwise_dist(np.array([[1, 2], [3, 4]])))
-    print(get_pairwise_slope(np.array([[1, 2], [3, 4]])))
-
+    vecs = np.array([[1, 2], [3, 4], [5, 6]])
+    descs = get_sc(vecs)
+    print('++++++++++++++++')
+    print(descs)
