@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+from numpy import arctan2
+from scipy.spatial.distance import pdist, squareform
 from sklearn.cluster import AgglomerativeClustering
 
 from common.dataset_utils import load_actual_mnist
@@ -34,14 +36,29 @@ def get_polygons(contours):
     return [get_polygon(contour) for contour in contours]
 
 
+def get_pairwise_dist(vec):
+    return squareform(pdist(vec))
+
+
+def get_pairwise_slope(vec):
+    xs = vec[:, 0:1]
+    ys = vec[:, 1:2]
+    dx = xs.transpose() - xs
+    dy = ys.transpose() - ys
+    return arctan2(dy, dx)
+
+
 if __name__ == '__main__':
     train_images, train_labels, _, _ = load_actual_mnist()
-    image_of_6 = train_images[train_labels == 4][1914]
-    image_of_6_col = cv2.cvtColor(image_of_6, cv2.COLOR_GRAY2BGR)
-    th_image = threshold_image(image_of_6)
-    det_contours, _ = get_contours(th_image)
+    # image_of_6 = train_images[train_labels == 4][1914]
+    # image_of_6_col = cv2.cvtColor(image_of_6, cv2.COLOR_GRAY2BGR)
+    # th_image = threshold_image(image_of_6)
+    # det_contours, _ = get_contours(th_image)
     # polygons = get_polygons(det_contours)
     # img = draw_polygons_on_image(image_of_6, polygons)
-    run_clustering_on_image(th_image)
+    # run_clustering_on_image(th_image)
     # img = cv2.drawContours(image_of_6_col, det_contours, -1, (0, 0, 255), 1)
     # show_image(cv2.resize(img, (300, 300)))
+    print(get_pairwise_dist(np.array([[1, 2], [3, 4]])))
+    print(get_pairwise_slope(np.array([[1, 2], [3, 4]])))
+
