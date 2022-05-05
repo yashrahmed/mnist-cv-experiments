@@ -4,7 +4,7 @@ from scipy.spatial.distance import pdist, squareform
 from math import pi
 
 
-def compute_shape_context_descriptor(vec, d_bin=5, t_bin=12):
+def compute_descriptor(vec, d_bin=5, t_bin=12):
     n, _ = vec.shape
     d_inner = 1
     d_outer = 40

@@ -12,3 +12,11 @@ def scatter_plot(dataset, labels, title='Default Title'):
     plt.legend(loc="best", shadow=False, scatterpoints=1)
     plt.title(title)
     return plt
+
+
+def scatter_plot_simple(dataset, title='Default Title'):
+    plt.figure()
+    plt.scatter(dataset[:, 0], dataset[:, 1])
+    plt.legend(loc="best", shadow=False, scatterpoints=1)
+    plt.title(title)
+    return plt
