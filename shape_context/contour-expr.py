@@ -5,7 +5,7 @@ from sklearn.cluster import AgglomerativeClustering
 from common.dataset_utils import load_actual_mnist
 from common.plot_utils import scatter_plot
 
-from shape_context_desc import compute_descriptor as get_sc
+from shape_context_desc import compute_descriptor as get_sc, compute_cost_matrix, compute_cost_matrix_raw
 
 
 def threshold_image(images, threshold=100):
@@ -22,8 +22,8 @@ def run_clustering_on_image(image):
 
 
 def run_clustering_based_sampling_on_image(image, n_clusters=10):
-    sample_points, uniq_labels = sample_points_using_clustering(image, n_clusters)
-    plt = scatter_plot(sample_points, uniq_labels)
+    sample_points = sample_points_using_clustering(image, n_clusters)
+    plt = scatter_plot(sample_points, np.arange(0, n_clusters))
     return plt
 
 
@@ -48,25 +48,33 @@ def sample_points_using_clustering(image, n_clusters=10):
     agg = AgglomerativeClustering(n_clusters=n_clusters, linkage='average')
     agg.fit(points)
 
-    uniq_labels = np.unique(agg.labels_)
-    sampled_points = np.array([np.mean(points[agg.labels_ == label], axis=0) for label in uniq_labels])
-    return sampled_points, uniq_labels
+    unique_labels = np.unique(agg.labels_)
+    sampled_points = np.array([np.mean(points[agg.labels_ == label], axis=0) for label in unique_labels])
+    return sampled_points
 
 
 if __name__ == '__main__':
     train_images, train_labels, _, _ = load_actual_mnist()
-    image_of_6 = train_images[train_labels == 4][1914]
-    image_of_6_col = cv2.cvtColor(image_of_6, cv2.COLOR_GRAY2BGR)
-    th_image = threshold_image(image_of_6)
-    # det_contours, _ = get_contours(th_image)
+    image_of_4 = threshold_image(train_images[train_labels == 4][1914])
+    image_of_42 = threshold_image(train_images[train_labels == 4][194])
+    image_of_5 = threshold_image(train_images[train_labels == 5][119])
+
+    # det_contours, _ = get_contours(image_of_4)
     # polygons = get_polygons(det_contours)
-    # img = draw_polygons_on_image(image_of_6, polygons)
-    run_clustering_on_image(th_image)
-    plt_handle = run_clustering_based_sampling_on_image(th_image)
+    # img = draw_polygons_on_image(image_of_4, polygons)
+    run_clustering_on_image(image_of_5)
+    plt_handle = run_clustering_based_sampling_on_image(image_of_5)
     plt_handle.show()
     # img = cv2.drawContours(image_of_6_col, det_contours, -1, (0, 0, 255), 1)
     # show_image(cv2.resize(img, (300, 300)))
 
-    sample_points, _ = sample_points_using_clustering(th_image)
-    descs = get_sc(sample_points)
-    print(descs)
+    descs_4 = get_sc(sample_points_using_clustering(image_of_4))
+    descs_42 = get_sc(sample_points_using_clustering(image_of_42))
+    descs_5 = get_sc(sample_points_using_clustering(image_of_5))
+    #
+    mat = compute_cost_matrix(descs_4, descs_42)
+    mat2 = compute_cost_matrix(descs_4, descs_5)
+
+    print(mat)
+    print('*******************')
+    print(mat2)
