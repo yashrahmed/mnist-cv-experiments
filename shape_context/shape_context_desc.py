@@ -3,6 +3,13 @@ from math import pi
 import numpy as np
 from numpy import arctan2, histogram2d
 from scipy.spatial.distance import pdist, squareform
+from scipy.optimize import linear_sum_assignment
+
+
+def calculate_correspondence(cost_mat):
+    row_ind, col_ind = linear_sum_assignment(cost_mat)
+    total_match_cost = sum([cost_mat[row_ind[i]][col_ind[i]] for i in range(0, row_ind.shape[0])])
+    return np.vstack((row_ind, col_ind)).transpose(), total_match_cost
 
 
 def compute_cost_matrix(desc1, desc2):
@@ -58,5 +65,6 @@ def get_pairwise_slopes(vec):
     ys = vec[:, 1:2]
     dx = xs.transpose() - xs
     dy = ys.transpose() - ys
-    angles = arctan2(dy, dx)
-    return angles.reshape([n, -1]) + pi
+    angles = arctan2(dy, dx).reshape([n, -1]) + pi
+    np.fill_diagonal(angles, -2)  # Fill diagonals with -2 so as to exclude from the histogram freq count.
+    return angles

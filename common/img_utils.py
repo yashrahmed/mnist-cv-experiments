@@ -38,3 +38,21 @@ def plot_brief_features_on_image(image, coords, resize_value=(56, 56)):
         overlay = cv2.rectangle(overlay, (x1, y1), (x1 + 1, y1 + 1), red_color, thickness)
         overlay = cv2.rectangle(overlay, (x2, y2), (x2 + 1, y2 + 1), red_color, thickness)
     return cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
+
+
+def plot_matches(img_1, img_2, points_1, points_2, matches):
+    red_color = (0, 0, 255)
+    blue_color = (255, 0, 0)
+    new_size = (280, 280)
+    thickness = 1
+    img_1 = cv2.cvtColor(cv2.resize(img_1, new_size), cv2.COLOR_GRAY2BGR)
+    img_2 = cv2.cvtColor(cv2.resize(img_2, new_size), cv2.COLOR_GRAY2BGR)
+    img_3 = cv2.hconcat([img_1, img_2])
+    for match in matches:
+        m1, m2 = match
+        y1, x1 = np.round(points_1[m1]).astype(np.uint8) * 10
+        y2, x2 = (np.round(points_2[m2]).astype(np.uint8) + [0, 28]) * 10 # offset to account for a concatenated image
+        img_3 = cv2.line(img_3, (x1, y1), (x2, y2), red_color, thickness)
+        img_3 = cv2.rectangle(img_3, (x1, y1), (x1 + 5, y1 + 5), blue_color, thickness)
+        img_3 = cv2.rectangle(img_3, (x2, y2), (x2 + 5, y2 + 5), blue_color, thickness)
+    return img_3
