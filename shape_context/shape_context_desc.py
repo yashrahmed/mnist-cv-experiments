@@ -37,12 +37,12 @@ def compute_cost_matrix_raw(desc1, desc2):
     return np.array(mat) / 2
 
 
-def compute_descriptor(vec, d_bin=5, t_bin=12):
+def compute_descriptor(vec, d_bin=6, t_bin=13):
     n, _ = vec.shape
     d_inner = 1
     d_outer = 40
     t_start = 0
-    t_end = 2 * pi
+    t_end = 2 * pi + 0.01
     d_bin_edges = np.logspace(np.log10(d_inner), np.log10(d_outer), d_bin)
     t_bin_edges = np.linspace(t_start, t_end, t_bin)
 

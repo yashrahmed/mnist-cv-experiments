@@ -53,6 +53,54 @@ def sample_points_using_clustering(image, n_clusters=10):
     return sampled_points
 
 
+def run_on_control_images_expr():
+    center1 = (12, 12)
+    center2 = (20, 20)
+    control_4_corners = np.zeros([28, 28], dtype=np.uint8)
+    control_4_corners[center1[0]-5:center1[0]-5+2, center1[1]-5:center1[1]-5+2] = 255
+    control_4_corners[center1[0]-5:center1[0]-5+2, center1[1]+5:center1[1]+5+2] = 255
+    control_4_corners[center1[0]+5:center1[0]+5+2, center1[1]-5:center1[1]-5+2] = 255
+    control_4_corners[center1[0]+5:center1[0]+5+2, center1[1]+5:center1[1]+5+2] = 255
+
+    control_4_corners_2 = np.zeros([28, 28], dtype=np.uint8)
+    control_4_corners_2[center2[0]-5:center2[0]-5+2, center2[1]-5:center2[1]-5+2] = 255
+    control_4_corners_2[center2[0]-5:center2[0]-5+2, center2[1]+5:center2[1]+5+2] = 255
+    control_4_corners_2[center2[0]+5:center2[0]+5+2, center2[1]-5:center2[1]-5+2] = 255
+    control_4_corners_2[center2[0]+5:center2[0]+5+2, center2[1]+5:center2[1]+5+2] = 255
+
+    control_diamond = np.zeros([28, 28], dtype=np.uint8)
+    control_diamond[center1[0]:center1[0]+2, center1[1]-5:center1[1]-5+2] = 255
+    control_diamond[center1[0]:center1[0]+2, center1[1]+5:center1[1]+5+2] = 255
+    control_diamond[center1[0]-5:center1[0]-5+2, center1[1]:center1[1]+2] = 255
+    control_diamond[center1[0]+5:center1[0]+5+2, center1[1]:center1[1]+2] = 255
+
+    sp_c = sample_points_using_clustering(control_4_corners, n_clusters=4)
+    descs_c = get_sc(sp_c)
+
+    sp_c2 = sample_points_using_clustering(control_4_corners_2, n_clusters=4)
+    descs_c2 = get_sc(sp_c2)
+
+    sp_d = sample_points_using_clustering(control_diamond, n_clusters=4)
+    descs_d = get_sc(sp_d)
+
+    mat = compute_cost_matrix(descs_c, descs_c2)
+    mat2 = compute_cost_matrix(descs_c, descs_d)
+
+    matches, total_cost = calculate_correspondence(mat)
+    show_image(plot_matches(control_4_corners, control_4_corners_2, sp_c, sp_c2, matches))
+    matches, total_cost_2 = calculate_correspondence(mat2)
+    show_image(plot_matches(control_4_corners, control_diamond, sp_c, sp_d, matches))
+    print('histograms of corner image #1 ------------------->')
+    print(descs_c.reshape([4, 5, 12]))
+    print('histograms of corner image #2 ------------------->')
+    print(descs_c2.reshape([4, 5, 12]))
+    print('histograms of diamonds image ------------------->')
+    print(descs_d.reshape([4, 5, 12]))
+
+    print(f'cost of matching corner to corner_2 = {total_cost}')
+    print(f'cost of matching corner to diamond = {total_cost_2}')
+
+
 if __name__ == '__main__':
     train_images, train_labels, _, _ = load_actual_mnist()
     image_of_4 = threshold_image(train_images[train_labels == 4][1914])
