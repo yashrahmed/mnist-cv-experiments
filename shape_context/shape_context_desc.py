@@ -6,7 +6,8 @@ from scipy.spatial.distance import pdist, squareform
 from scipy.optimize import linear_sum_assignment
 
 
-def calculate_correspondence(cost_mat):
+def calculate_correspondence(desc1, desc2):
+    cost_mat = compute_cost_matrix(desc1, desc2)
     row_ind, col_ind = linear_sum_assignment(cost_mat)
     total_match_cost = sum([cost_mat[row_ind[i]][col_ind[i]] for i in range(0, row_ind.shape[0])])
     return np.vstack((row_ind, col_ind)).transpose(), total_match_cost
