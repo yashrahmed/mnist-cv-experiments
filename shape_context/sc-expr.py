@@ -4,7 +4,7 @@ from scipy.interpolate import RBFInterpolator as RBF
 from sklearn.cluster import AgglomerativeClustering
 
 from common.dataset_utils import load_actual_mnist
-from common.img_utils import plot_matches, show_image, draw_polygons_on_image
+from common.img_utils import plot_matches, show_image, draw_contours_on_image
 from common.plot_utils import scatter_plot
 from shape_context_desc import compute_descriptor as get_sc, calculate_correspondence
 
@@ -92,8 +92,20 @@ def morph_homo(point_matches, pts_1, pts_2, img_1):
     n2, _ = pts_2.shape
     n = min(n1, n2)
     matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]]).reshape([-1, 1, 2])
-    mat, mask = cv2.findHomography(pts_1[:n, :].reshape([-1, 1, 2]), matched_pts, cv2.RANSAC)
-    return cv2.warpPerspective(img_1, mat, img_1.shape)
+    mat, mask = cv2.findHomography(pts_1[:n, :].reshape([-1, 1, 2]), matched_pts, cv2.RANSAC, 6)
+    return threshold_image(cv2.warpPerspective(img_1, mat, img_1.shape), 80)
+
+
+def morph_points(point_matches, pts_1, pts_2, img_1):
+    n1, _ = pts_1.shape
+    n2, _ = pts_2.shape
+    n = min(n1, n2)
+    matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]]).reshape([-1, 2])
+    interp = RBF(pts_1[:n, :], matched_pts, kernel='linear')
+    x_points, y_points = np.where(img_1 >= 255)
+    points = np.vstack((x_points, y_points)).transpose().astype(np.uint8)
+    new_points = np.round(interp(points)).astype(np.uint8)
+    return new_points
 
 
 def sample_points_using_clustering(image, n_clusters=10):
@@ -106,6 +118,11 @@ def sample_points_using_clustering(image, n_clusters=10):
     unique_labels = np.unique(agg.labels_)
     sampled_points = np.array([np.mean(points[agg.labels_ == label], axis=0) for label in unique_labels])
     return sampled_points
+
+
+def sample_points_from_contour(contours):
+    # Assumes that the input is a simplified contour.
+    return swap_cols(np.unique(np.vstack(contours).astype(np.uint8).reshape([-1, 2]), axis=0))
 
 
 def run_on_control_images_expr():
@@ -160,6 +177,34 @@ def run_sc_distance_with_morph(image_1, image_2, k=1, n_clusters=30):
     print(f'{k}th time cost = {total_cost_after_final_morph}')
 
 
+def run_contour_sc_distance_with_morph(image_1, image_2, k=1):
+    # image 1 and 2 are binary images.
+    contour_1, _ = get_contours(image_1)
+    sp_1 = sample_points_from_contour(contour_1)
+    descs_1 = get_sc(sp_1)
+
+    contour_2, _ = get_contours(image_2)
+    sp_2 = sample_points_from_contour(contour_2)
+    descs_2 = get_sc(sp_2)
+
+    matches, total_cost_first_time = calculate_correspondence(descs_1, descs_2)
+    show_image(plot_matches(image_1, image_2, sp_1, sp_2, matches))
+
+    total_cost_after_final_morph = total_cost_first_time
+    # Perform morphing k times.....
+    for i in range(0, k):
+        image_1 = morph_homo(matches, sp_1, sp_2, image_1)
+        contour_1, _ = get_contours(image_1)
+        sp_1 = sample_points_from_contour(contour_1)
+        descs_1 = get_sc(sp_1)
+
+        matches, total_cost_after_final_morph = calculate_correspondence(descs_1, descs_2)
+        show_image(draw_contours_on_image(plot_matches(image_1, image_2, sp_1, sp_2, matches), contour_1))
+
+    print(f'first time cost = {total_cost_first_time}')
+    print(f'{k}th time cost = {total_cost_after_final_morph}')
+
+
 def run_sc_distance_with_morph_with_homography(image_1, image_2, k=1, n_clusters=20):
     # image 1 and 2 are binary images.
     sp_1 = sample_points_using_clustering(image_1, n_clusters=n_clusters)
@@ -200,14 +245,10 @@ def builtin_shape_context_dist_experiment():
 
 if __name__ == '__main__':
     train_images, train_labels, _, _ = load_actual_mnist()
-    image_of_4 = threshold_image(train_images[train_labels == 8][314])
-    image_of_42 = threshold_image(train_images[train_labels == 3][194])
-    image_of_5 = threshold_image(train_images[train_labels == 5][145])
+    image_of_4 = threshold_image(train_images[train_labels == 4][314])
+    image_of_42 = threshold_image(train_images[train_labels == 5][64])
+    image_of_5 = threshold_image(train_images[train_labels == 4][1120])
 
-    det_contours, _ = get_contours(image_of_4)
-    polygons = get_polygons(det_contours)
-    img = draw_polygons_on_image(image_of_4, polygons)
-    show_image(cv2.resize(img, (300, 300)))
+    run_contour_sc_distance_with_morph(image_of_4, image_of_42, k=1)
+    run_contour_sc_distance_with_morph(image_of_4, image_of_5, k=1)
 
-    # run_sc_distance_with_morph_with_homography(image_of_4, image_of_42, k=2)
-    # run_sc_distance_with_morph_with_homography(image_of_4, image_of_5, k=2)

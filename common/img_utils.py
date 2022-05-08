@@ -2,6 +2,10 @@ import cv2
 import numpy as np
 
 
+def draw_contours_on_image(image, contours):
+    return cv2.drawContours(image, contours, -1, color=(0, 255, 0))
+
+
 def draw_polygons_on_image(image, polygons):
     image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
     for polygon in polygons:
