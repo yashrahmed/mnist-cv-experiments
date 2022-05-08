@@ -9,6 +9,10 @@ from common.plot_utils import scatter_plot
 from shape_context_desc import compute_descriptor as get_sc, compute_cost_matrix, calculate_correspondence
 
 
+def swap_cols(x):
+    return np.array(x[:, [1, 0]])
+
+
 def create_control_shapes():
     center1 = (12, 12)
     center2 = (20, 20)
@@ -78,8 +82,16 @@ def morph(point_matches, pts_1, pts_2, img_1):
     return out_img
 
 
+def morph_homo(point_matches, pts_1, pts_2, img_1):
+    pts_1 = swap_cols(pts_1)
+    pts_2 = swap_cols(pts_2)
+    matched_pts = np.array([pts_2[i, :] for i in point_matches[:, 1]]).reshape([-1, 1, 2])
+    mat, mask = cv2.findHomography(pts_1.reshape([-1, 1, 2]), matched_pts, cv2.RANSAC)
+    return cv2.warpPerspective(img_1, mat, img_1.shape)
+
+
 def sample_points_using_clustering(image, n_clusters=10):
-    x_points, y_points = np.where(image >= 255)
+    x_points, y_points = np.where(image >= 90)
     points = np.vstack((x_points, y_points)).transpose().astype(np.uint16)
 
     agg = AgglomerativeClustering(n_clusters=n_clusters, linkage='average')
@@ -120,12 +132,12 @@ def run_on_control_images_expr():
     print(f'cost of matching corner to diamond = {total_cost_2}')
 
 
-def run_sc_distance_with_morph(image_1, image_2, k=1):
+def run_sc_distance_with_morph(image_1, image_2, k=1, n_clusters=30):
     # image 1 and 2 are binary images.
-    sp_1 = sample_points_using_clustering(image_1)
+    sp_1 = sample_points_using_clustering(image_1, n_clusters=n_clusters)
     descs_1 = get_sc(sp_1)
 
-    sp_2 = sample_points_using_clustering(image_2)
+    sp_2 = sample_points_using_clustering(image_2, n_clusters=n_clusters)
     descs_2 = get_sc(sp_2)
 
     mat = compute_cost_matrix(descs_1, descs_2)
@@ -136,7 +148,34 @@ def run_sc_distance_with_morph(image_1, image_2, k=1):
     # Perform morphing k times.....
     for i in range(0, k):
         image_1 = morph(matches, sp_1, sp_2, image_1)
-        sp_1 = sample_points_using_clustering(image_1)
+        sp_1 = sample_points_using_clustering(image_1, n_clusters=n_clusters)
+        descs_1 = get_sc(sp_1)
+
+        mat = compute_cost_matrix(descs_1, descs_2)
+        matches, total_cost_after_final_morph = calculate_correspondence(mat)
+        show_image(plot_matches(image_1, image_2, sp_1, sp_2, matches))
+
+    print(f'first time cost = {total_cost_first_time}')
+    print(f'{k}th time cost = {total_cost_after_final_morph}')
+
+
+def run_sc_distance_with_morph_with_homography(image_1, image_2, k=1, n_clusters=20):
+    # image 1 and 2 are binary images.
+    sp_1 = sample_points_using_clustering(image_1, n_clusters=n_clusters)
+    descs_1 = get_sc(sp_1)
+
+    sp_2 = sample_points_using_clustering(image_2, n_clusters=n_clusters)
+    descs_2 = get_sc(sp_2)
+
+    mat = compute_cost_matrix(descs_1, descs_2)
+    matches, total_cost_first_time = calculate_correspondence(mat)
+    show_image(plot_matches(image_1, image_2, sp_1, sp_2, matches))
+
+    total_cost_after_final_morph = total_cost_first_time
+    # Perform morphing k times.....
+    for i in range(0, k):
+        image_1 = morph_homo(matches, sp_1, sp_2, image_1)
+        sp_1 = sample_points_using_clustering(image_1, n_clusters=n_clusters)
         descs_1 = get_sc(sp_1)
 
         mat = compute_cost_matrix(descs_1, descs_2)
@@ -162,9 +201,9 @@ def builtin_shape_context_dist_experiment():
 
 if __name__ == '__main__':
     train_images, train_labels, _, _ = load_actual_mnist()
-    image_of_4 = threshold_image(train_images[train_labels == 4][1914])
-    image_of_42 = threshold_image(train_images[train_labels == 4][194])
-    image_of_5 = threshold_image(train_images[train_labels == 5][719])
+    image_of_4 = threshold_image(train_images[train_labels == 5][1914])
+    image_of_42 = threshold_image(train_images[train_labels == 3][194])
+    image_of_5 = threshold_image(train_images[train_labels == 5][145])
 
     # det_contours, _ = get_contours(image_of_4)
     # polygons = get_polygons(det_contours)
@@ -177,5 +216,5 @@ if __name__ == '__main__':
     # img = cv2.drawContours(image_of_6_col, det_contours, -1, (0, 0, 255), 1)
     # show_image(cv2.resize(img, (300, 300)))
 
-    run_sc_distance_with_morph(image_of_4, image_of_42, k=1)
-    run_sc_distance_with_morph(image_of_4, image_of_5, k=1)
+    run_sc_distance_with_morph_with_homography(image_of_4, image_of_42, k=2)
+    run_sc_distance_with_morph_with_homography(image_of_4, image_of_5, k=2)
