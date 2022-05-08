@@ -69,7 +69,7 @@ def get_polygons(contours):
 def morph(point_matches, pts_1, pts_2, img_1):
     out_img = np.zeros([28, 28]).astype(np.uint8)
     matched_pts = np.array([pts_2[i, :] for i in point_matches[:, 1]]).reshape([-1, 2])
-    interp = RBF(pts_1, matched_pts)
+    interp = RBF(pts_1, matched_pts, kernel='linear')
     x_points, y_points = np.where(img_1 >= 255)
     points = np.vstack((x_points, y_points)).transpose().astype(np.uint8)
     new_points = np.round(interp(points)).astype(np.uint8)
