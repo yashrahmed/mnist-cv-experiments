@@ -71,7 +71,8 @@ def get_polygons(contours):
 
 
 def morph(point_matches, pts_1, pts_2, img_1):
-    out_img = np.zeros([28, 28]).astype(np.uint8)
+    r, c = img_1.shape
+    out_img = np.zeros([r, c]).astype(np.uint8)
     n1, _ = pts_1.shape
     n2, _ = pts_2.shape
     n = min(n1, n2)
@@ -81,7 +82,8 @@ def morph(point_matches, pts_1, pts_2, img_1):
     points = np.vstack((x_points, y_points)).transpose().astype(np.uint8)
     new_points = np.round(interp(points)).astype(np.uint8)
     for pt in new_points:
-        out_img[pt[0]][pt[1]] = 255
+        if 0 <= pt[0] < r and 0 <= pt[1] < c:
+            out_img[pt[0]][pt[1]] = 255
     return out_img
 
 
@@ -247,7 +249,7 @@ if __name__ == '__main__':
     train_images, train_labels, _, _ = load_actual_mnist()
     image_of_4 = threshold_image(train_images[train_labels == 4][314])
     image_of_42 = threshold_image(train_images[train_labels == 5][64])
-    image_of_5 = threshold_image(train_images[train_labels == 4][712])
+    image_of_5 = threshold_image(train_images[train_labels == 4][2178])
 
     run_contour_sc_distance_with_morph(image_of_4, image_of_42, k=1)
     run_contour_sc_distance_with_morph(image_of_4, image_of_5, k=1)
