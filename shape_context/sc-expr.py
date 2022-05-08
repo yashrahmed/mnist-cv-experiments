@@ -4,7 +4,7 @@ from scipy.interpolate import RBFInterpolator as RBF
 from sklearn.cluster import AgglomerativeClustering
 
 from common.dataset_utils import load_actual_mnist
-from common.img_utils import plot_matches, show_image
+from common.img_utils import plot_matches, show_image, draw_polygons_on_image
 from common.plot_utils import scatter_plot
 from shape_context_desc import compute_descriptor as get_sc, compute_cost_matrix, calculate_correspondence
 
@@ -57,7 +57,7 @@ def run_clustering_based_sampling_on_image(image, n_clusters=10, title='title'):
 
 
 def get_contours(bin_image):
-    contours, hierarchy = cv2.findContours(bin_image, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(bin_image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     return contours, hierarchy
 
 
@@ -201,20 +201,14 @@ def builtin_shape_context_dist_experiment():
 
 if __name__ == '__main__':
     train_images, train_labels, _, _ = load_actual_mnist()
-    image_of_4 = threshold_image(train_images[train_labels == 5][1914])
+    image_of_4 = threshold_image(train_images[train_labels == 8][314])
     image_of_42 = threshold_image(train_images[train_labels == 3][194])
     image_of_5 = threshold_image(train_images[train_labels == 5][145])
 
-    # det_contours, _ = get_contours(image_of_4)
-    # polygons = get_polygons(det_contours)
-    # img = draw_polygons_on_image(image_of_4, polygons)
-    # run_clustering_on_image(image_of_5)
-    # plt_handle = run_clustering_based_sampling_on_image(image_of_4, title='4')
-    # plt_handle = run_clustering_based_sampling_on_image(image_of_42, title='42')
-    # plt_handle = run_clustering_based_sampling_on_image(image_of_5, title='5')
-    # plt_handle.show()
-    # img = cv2.drawContours(image_of_6_col, det_contours, -1, (0, 0, 255), 1)
-    # show_image(cv2.resize(img, (300, 300)))
+    det_contours, _ = get_contours(image_of_4)
+    polygons = get_polygons(det_contours)
+    img = draw_polygons_on_image(image_of_4, polygons)
+    show_image(cv2.resize(img, (300, 300)))
 
-    run_sc_distance_with_morph_with_homography(image_of_4, image_of_42, k=2)
-    run_sc_distance_with_morph_with_homography(image_of_4, image_of_5, k=2)
+    # run_sc_distance_with_morph_with_homography(image_of_4, image_of_42, k=2)
+    # run_sc_distance_with_morph_with_homography(image_of_4, image_of_5, k=2)
