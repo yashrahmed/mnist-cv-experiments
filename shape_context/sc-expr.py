@@ -93,8 +93,8 @@ def morph_homo(point_matches, pts_1, pts_2, img_1):
     n1, _ = pts_1.shape
     n2, _ = pts_2.shape
     n = min(n1, n2)
-    matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]]).reshape([-1, 1, 2])
-    mat, mask = cv2.findHomography(pts_1[:n, :].reshape([-1, 1, 2]), matched_pts, cv2.RANSAC, 6)
+    matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]])
+    mat, mask = cv2.findHomography(pts_1[:n, :], matched_pts, cv2.RANSAC, 6)
     return threshold_image(cv2.warpPerspective(img_1, mat, img_1.shape), 80)
 
 
@@ -103,7 +103,7 @@ def morph_points(point_matches, pts_1, pts_2, img_1):
     n2, _ = pts_2.shape
     n = min(n1, n2)
     matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]]).reshape([-1, 2])
-    interp = RBF(pts_1[:n, :], matched_pts, kernel='linear')
+    interp = RBF(pts_1[:n, :], matched_pts, smoothing=0.01)
     x_points, y_points = np.where(img_1 >= 255)
     points = np.vstack((x_points, y_points)).transpose().astype(np.uint8)
     new_points = np.round(interp(points)).astype(np.uint8)
