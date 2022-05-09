@@ -203,9 +203,6 @@ def run_contour_sc_distance_with_morph(image_1, image_2, k=1):
         matches, total_cost_after_final_morph = calculate_correspondence(descs_1, descs_2)
         show_image(draw_contours_on_image(plot_matches(image_1, image_2, sp_1, sp_2, matches), contour_1))
 
-    print(f'first time cost = {total_cost_first_time}')
-    print(f'{k}th time cost = {total_cost_after_final_morph}')
-
 
 def run_sc_distance_with_morph_with_homography(image_1, image_2, k=1, n_clusters=20):
     # image 1 and 2 are binary images.
@@ -251,6 +248,6 @@ if __name__ == '__main__':
     image_of_42 = threshold_image(train_images[train_labels == 4][2178])
     image_of_5 = threshold_image(train_images[train_labels == 5][64])
 
-    run_contour_sc_distance_with_morph(image_of_4, image_of_42, k=1)
-    run_contour_sc_distance_with_morph(image_of_4, image_of_5, k=1)
+    run_contour_sc_distance_with_morph(image_of_42, image_of_4, k=1)
+    run_contour_sc_distance_with_morph(image_of_5, image_of_4, k=1)
 
