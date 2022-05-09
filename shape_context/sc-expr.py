@@ -4,7 +4,7 @@ from scipy.interpolate import RBFInterpolator as RBF
 from sklearn.cluster import AgglomerativeClustering
 
 from common.dataset_utils import load_actual_mnist
-from common.img_utils import plot_matches, show_image, draw_contours_on_image
+from common.img_utils import plot_matches, show_image, show_images, draw_contours_on_image
 from common.plot_utils import scatter_plot
 from shape_context_desc import compute_descriptor as get_sc, calculate_correspondence
 
@@ -248,8 +248,8 @@ def builtin_shape_context_dist_experiment():
 if __name__ == '__main__':
     train_images, train_labels, _, _ = load_actual_mnist()
     image_of_4 = threshold_image(train_images[train_labels == 4][314])
-    image_of_42 = threshold_image(train_images[train_labels == 5][64])
-    image_of_5 = threshold_image(train_images[train_labels == 4][2178])
+    image_of_42 = threshold_image(train_images[train_labels == 4][2178])
+    image_of_5 = threshold_image(train_images[train_labels == 5][64])
 
     run_contour_sc_distance_with_morph(image_of_4, image_of_42, k=1)
     run_contour_sc_distance_with_morph(image_of_4, image_of_5, k=1)
