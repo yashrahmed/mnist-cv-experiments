@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 from common.dataset_utils import load_actual_mnist
-from common.img_utils import plot_brief_features_on_image, show_images
+from common.img_utils import draw_brief_features_on_image, show_images
 
 
 def compute_custom_brief(image, location_pairs):
@@ -60,5 +60,5 @@ if __name__ == '__main__':
     """)
     brief_features_intg = compute_custom_brief_intg(train_image[0], loc_pairs)
     print(f'brief_features_intg={brief_features_intg}')
-    out_image = cv2.resize(plot_brief_features_on_image(train_image[0], loc_pairs, resize_value=(28, 28)), (200, 200))
+    out_image = cv2.resize(draw_brief_features_on_image(train_image[0], loc_pairs, resize_value=(28, 28)), (200, 200))
     show_images([out_image])

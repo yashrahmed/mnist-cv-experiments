@@ -13,22 +13,14 @@ def draw_polygons_on_image(image, polygons):
     return image
 
 
-def show_images(images, disp_name='combined'):
-    out_image = np.concatenate(images, axis=1)
-    cv2.imshow(disp_name, out_image)
-    cv2.waitKey(0)
+def draw_points_on_image(image, points):
+    image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    for point in points:
+        image = cv2.drawMarker(image, (point[1], point[0]), (0, 255, 0), cv2.MARKER_SQUARE, markerSize=1, thickness=1)
+    return image
 
 
-def show_image(image, disp_name='single'):
-    cv2.imshow(disp_name, image)
-    cv2.waitKey(0)
-
-
-def load_image(img_path):
-    return cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2GRAY)
-
-
-def plot_brief_features_on_image(image, coords, resize_value=(56, 56)):
+def draw_brief_features_on_image(image, coords, resize_value=(56, 56)):
     red_color = (0, 0, 255)
     green_color = (0, 255, 0)
     thickness = 1
@@ -44,7 +36,7 @@ def plot_brief_features_on_image(image, coords, resize_value=(56, 56)):
     return cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
 
 
-def plot_matches(img_1, img_2, points_1, points_2, matches):
+def draw_matches(img_1, img_2, points_1, points_2, matches):
     red_color = (0, 0, 255)
     blue_color = (255, 0, 0)
     new_size = (280, 280)
@@ -60,3 +52,23 @@ def plot_matches(img_1, img_2, points_1, points_2, matches):
         img_3 = cv2.rectangle(img_3, (x1, y1), (x1 + 5, y1 + 5), blue_color, thickness)
         img_3 = cv2.rectangle(img_3, (x2, y2), (x2 + 5, y2 + 5), blue_color, thickness)
     return img_3
+
+
+def load_image(img_path):
+    return cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2GRAY)
+
+
+def show_image(image, disp_name='single'):
+    cv2.imshow(disp_name, image)
+    cv2.waitKey(0)
+
+
+def show_images(images, disp_name='combined', scale=1):
+    shape = images[0].shape
+    r = shape[0]
+    c = shape[1]
+    if not scale == 1:
+        images = [cv2.resize(image, (r*scale, c*scale)) for image in images]
+    out_image = np.concatenate(images, axis=1)
+    cv2.imshow(disp_name, out_image)
+    cv2.waitKey(0)

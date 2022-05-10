@@ -16,7 +16,7 @@ from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
 from common.dataset_utils import load_actual_mnist
-from common.img_utils import show_images, plot_brief_features_on_image
+from common.img_utils import show_images, draw_brief_features_on_image
 from common.plot_utils import scatter_plot
 from parse_brief_coords import load_coords
 
@@ -341,7 +341,7 @@ def visualize_brief_experiment():
     brief_coords = load_coords()
     train_images, train_labels, test_images, test_labels = load_actual_mnist()
     idxs = [0, 14, 45, 908, 12, 17]
-    img_with_briefs = [cv2.resize(plot_brief_features_on_image(image, brief_coords), (200, 200)) for image in
+    img_with_briefs = [cv2.resize(draw_brief_features_on_image(image, brief_coords), (200, 200)) for image in
                        train_images[idxs]]
     show_images(img_with_briefs)
 
