@@ -79,10 +79,11 @@ def morph(point_matches, pts_1, pts_2, img_1):
     x_points, y_points = np.where(img_1 >= 255)
     points = np.vstack((x_points, y_points)).transpose().astype(np.uint8)
     new_points = np.round(interp(points)).astype(np.uint8)
+    pts_1 = np.round(interp(pts_1)).astype(np.uint8)
     for pt in new_points:
         if 0 <= pt[0] < r and 0 <= pt[1] < c:
             out_img[pt[0]][pt[1]] = 255
-    return out_img
+    return out_img, pts_1
 
 
 def morph_affine(point_matches, pts_1, pts_2, img_1):
@@ -92,6 +93,7 @@ def morph_affine(point_matches, pts_1, pts_2, img_1):
     matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]])
     mat, mask = cv2.estimateAffine2D(pts_1[:n, :], matched_pts, method=cv2.RANSAC, ransacReprojThreshold=3)
     new_img = threshold_image(cv2.warpAffine(img_1, mat, img_1.shape), 70)
+    # swap to bring back to numpy axes convention.
     new_pts = swap_cols(np.reshape(cv2.transform(pts_1.reshape([-1, 1, 2]), mat), [-1, 2]))
     return new_img, new_pts
 
