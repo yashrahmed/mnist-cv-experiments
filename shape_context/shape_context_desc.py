@@ -6,11 +6,14 @@ from scipy.spatial.distance import pdist, squareform
 from scipy.optimize import linear_sum_assignment
 
 
-def calculate_correspondence(desc1, desc2):
+def calculate_correspondence(desc1, desc2, k=20):
     cost_mat = compute_cost_matrix(desc1, desc2)
     row_ind, col_ind = linear_sum_assignment(cost_mat)
-    total_match_cost = sum([cost_mat[row_ind[i]][col_ind[i]] for i in range(0, row_ind.shape[0])])
-    return np.vstack((row_ind, col_ind)).transpose(), total_match_cost
+    match_costs = np.array([cost_mat[row_ind[i]][col_ind[i]] for i in range(0, row_ind.shape[0])])
+    cost_limit = np.partition(match_costs, k)[k-1] if len(match_costs) > k else np.max(match_costs)
+    inlier_idxs = np.where(match_costs <= cost_limit)
+    matches = np.vstack((row_ind, col_ind)).transpose()
+    return matches, matches[inlier_idxs], np.sum(match_costs[inlier_idxs])
 
 
 def compute_cost_matrix(desc1, desc2):
@@ -40,8 +43,8 @@ def compute_cost_matrix_raw(desc1, desc2):
 
 def compute_descriptor(vec, d_bin=6, t_bin=13):
     n, _ = vec.shape
-    d_inner = 1
-    d_outer = 40
+    d_inner = 0.01
+    d_outer = 3
     t_start = 0
     t_end = 2 * pi + 0.01
     d_bin_edges = np.logspace(np.log10(d_inner), np.log10(d_outer), d_bin)
@@ -57,7 +60,7 @@ def get_pairwise_dists(vec):
     # vec is a NX2 array.
     n, _ = vec.shape
     dists = squareform(pdist(vec))
-    return dists.reshape([n, -1])
+    return dists.reshape([n, -1]) / np.median(dists)
 
 
 def get_pairwise_slopes(vec):

@@ -44,13 +44,19 @@ def draw_matches(img_1, img_2, points_1, points_2, matches):
     img_1 = cv2.cvtColor(cv2.resize(img_1, new_size), cv2.COLOR_GRAY2BGR)
     img_2 = cv2.cvtColor(cv2.resize(img_2, new_size), cv2.COLOR_GRAY2BGR)
     img_3 = cv2.hconcat([img_1, img_2])
+    points_1 = np.round(points_1).astype(np.uint8) * 10
+    points_2 = (np.round(points_2).astype(np.uint8) + [0, 28]) * 10  # offset to account for a concatenated image
+    for point in points_1:
+        y, x = point
+        img_3 = cv2.rectangle(img_3, (x, y), (x + 5, y + 5), blue_color, thickness)
+    for point in points_2:
+        y, x = point
+        img_3 = cv2.rectangle(img_3, (x, y), (x + 5, y + 5), blue_color, thickness)
     for match in matches:
         m1, m2 = match
-        y1, x1 = np.round(points_1[m1]).astype(np.uint8) * 10
-        y2, x2 = (np.round(points_2[m2]).astype(np.uint8) + [0, 28]) * 10 # offset to account for a concatenated image
+        y1, x1 = points_1[m1]
+        y2, x2 = points_2[m2]
         img_3 = cv2.line(img_3, (x1, y1), (x2, y2), red_color, thickness)
-        img_3 = cv2.rectangle(img_3, (x1, y1), (x1 + 5, y1 + 5), blue_color, thickness)
-        img_3 = cv2.rectangle(img_3, (x2, y2), (x2 + 5, y2 + 5), blue_color, thickness)
     return img_3
 
 
@@ -68,7 +74,7 @@ def show_images(images, disp_name='combined', scale=1):
     r = shape[0]
     c = shape[1]
     if not scale == 1:
-        images = [cv2.resize(image, (r*scale, c*scale)) for image in images]
+        images = [cv2.resize(image, (r * scale, c * scale)) for image in images]
     out_image = np.concatenate(images, axis=1)
     cv2.imshow(disp_name, out_image)
     cv2.waitKey(0)

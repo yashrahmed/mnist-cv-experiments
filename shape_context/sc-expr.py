@@ -73,9 +73,7 @@ def get_polygons(contours):
 def morph(point_matches, pts_1, pts_2, img_1):
     r, c = img_1.shape
     out_img = np.zeros([r, c]).astype(np.uint8)
-    n1, _ = pts_1.shape
-    n2, _ = pts_2.shape
-    n = min(n1, n2)
+    n, _ = point_matches.shape
     matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]]).reshape([-1, 2])
     interp = RBF(pts_1[:n, :], matched_pts, kernel='thin_plate_spline')
     x_points, y_points = np.where(img_1 >= 255)
@@ -90,30 +88,25 @@ def morph(point_matches, pts_1, pts_2, img_1):
 def morph_affine(point_matches, pts_1, pts_2, img_1):
     pts_1 = swap_cols(pts_1)
     pts_2 = swap_cols(pts_2)
-    n1, _ = pts_1.shape
-    n2, _ = pts_2.shape
-    n = min(n1, n2)
+    n, _ = point_matches.shape
     matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]])
     mat, mask = cv2.estimateAffine2D(pts_1[:n, :], matched_pts, method=cv2.RANSAC, ransacReprojThreshold=3)
-    return threshold_image(cv2.warpAffine(img_1, mat, img_1.shape), 70), \
-           swap_cols(np.reshape(cv2.transform(pts_1.reshape([-1, 1, 2]), mat), [-1, 2]))
+    new_img = threshold_image(cv2.warpAffine(img_1, mat, img_1.shape), 70)
+    new_pts = swap_cols(np.reshape(cv2.transform(pts_1.reshape([-1, 1, 2]), mat), [-1, 2]))
+    return new_img, new_pts
 
 
 def morph_homo(point_matches, pts_1, pts_2, img_1):
     pts_1 = swap_cols(pts_1)
     pts_2 = swap_cols(pts_2)
-    n1, _ = pts_1.shape
-    n2, _ = pts_2.shape
-    n = min(n1, n2)
+    n, _ = point_matches.shape
     matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]])
     mat, mask = cv2.findHomography(pts_1[:n, :], matched_pts, cv2.RANSAC, 6)
     return threshold_image(cv2.warpPerspective(img_1, mat, img_1.shape), 80)
 
 
 def morph_points(point_matches, pts_1, pts_2, img_1):
-    n1, _ = pts_1.shape
-    n2, _ = pts_2.shape
-    n = min(n1, n2)
+    n, _ = point_matches.shape
     matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]]).reshape([-1, 2])
     interp = RBF(pts_1[:n, :], matched_pts, smoothing=0.01)
     x_points, y_points = np.where(img_1 >= 255)
@@ -151,9 +144,9 @@ def run_on_control_images_expr():
     sp_d = sample_points_using_clustering(control_diamond, n_clusters=4)
     descs_d = get_sc(sp_d)
 
-    matches, total_cost = calculate_correspondence(descs_c, descs_c2)
+    matches, _, total_cost = calculate_correspondence(descs_c, descs_c2)
     show_image(draw_matches(control_4_corners, control_4_corners_2, sp_c, sp_c2, matches))
-    matches, total_cost_2 = calculate_correspondence(descs_c, descs_d)
+    matches, _, total_cost_2 = calculate_correspondence(descs_c, descs_d)
     show_image(draw_matches(control_4_corners, control_diamond, sp_c, sp_d, matches))
     print('histograms of corner image #1 ------------------->')
     print(descs_c.reshape([4, 5, 12]))
@@ -174,7 +167,7 @@ def run_sc_distance_with_morph(image_1, image_2, k=1, n_clusters=30):
     sp_2 = sample_points_using_clustering(image_2, n_clusters=n_clusters)
     descs_2 = get_sc(sp_2)
 
-    matches, total_cost_first_time = calculate_correspondence(descs_1, descs_2)
+    matches, _, total_cost_first_time = calculate_correspondence(descs_1, descs_2)
     show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
 
     total_cost_after_final_morph = total_cost_first_time
@@ -184,7 +177,7 @@ def run_sc_distance_with_morph(image_1, image_2, k=1, n_clusters=30):
         sp_1 = sample_points_using_clustering(image_1, n_clusters=n_clusters)
         descs_1 = get_sc(sp_1)
 
-        matches, total_cost_after_final_morph = calculate_correspondence(descs_1, descs_2)
+        matches, _, total_cost_after_final_morph = calculate_correspondence(descs_1, descs_2)
         show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
 
     print(f'first time cost = {total_cost_first_time}')
@@ -201,11 +194,11 @@ def run_contour_sc_distance_with_morph(image_1, image_2):
     sp_2 = sample_points_from_contour(contour_2)
     descs_2 = get_sc(sp_2)
 
-    matches, total_cost_first_time = calculate_correspondence(descs_1, descs_2)
-    show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
+    matches, inlier_matches, total_cost_first_time = calculate_correspondence(descs_1, descs_2, k=40)
+    show_image(draw_matches(image_1, image_2, sp_1, sp_2, inlier_matches))
 
     # Morph once.......
-    image_1, sp_1 = morph_affine(matches, sp_1, sp_2, image_1)
+    image_1, sp_1 = morph_affine(inlier_matches, sp_1, sp_2, image_1)
 
     image_1 = draw_points_on_image(image_1, sp_1)
     image_2 = draw_points_on_image(image_2, sp_2)
@@ -220,7 +213,7 @@ def run_sc_distance_with_morph_with_homography(image_1, image_2, k=1, n_clusters
     sp_2 = sample_points_using_clustering(image_2, n_clusters=n_clusters)
     descs_2 = get_sc(sp_2)
 
-    matches, total_cost_first_time = calculate_correspondence(descs_1, descs_2)
+    matches, _, total_cost_first_time = calculate_correspondence(descs_1, descs_2)
     show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
 
     total_cost_after_final_morph = total_cost_first_time
@@ -230,7 +223,7 @@ def run_sc_distance_with_morph_with_homography(image_1, image_2, k=1, n_clusters
         sp_1 = sample_points_using_clustering(image_1, n_clusters=n_clusters)
         descs_1 = get_sc(sp_1)
 
-        matches, total_cost_after_final_morph = calculate_correspondence(descs_1, descs_2)
+        matches, _, total_cost_after_final_morph = calculate_correspondence(descs_1, descs_2)
         show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
 
     print(f'first time cost = {total_cost_first_time}')
