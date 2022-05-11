@@ -2,15 +2,16 @@ from math import pi
 
 import numpy as np
 from numpy import arctan2, histogram2d
-from scipy.spatial.distance import pdist, squareform
 from scipy.optimize import linear_sum_assignment
+from scipy.spatial.distance import pdist, squareform
 
 
-def calculate_correspondence(desc1, desc2, k=20):
+def calculate_correspondence(desc1, desc2, max_rank=20):
     cost_mat = compute_cost_matrix(desc1, desc2)
     row_ind, col_ind = linear_sum_assignment(cost_mat)
     match_costs = np.array([cost_mat[row_ind[i]][col_ind[i]] for i in range(0, row_ind.shape[0])])
-    cost_limit = np.max(np.partition(match_costs, k)[:k]) if match_costs.shape[0] > k else np.max(match_costs)
+    cost_limit = np.max(np.partition(match_costs, max_rank)[:max_rank]) if match_costs.shape[0] > max_rank else np.max(
+        match_costs)
     inlier_idxs = np.where(match_costs <= cost_limit)
     matches = np.vstack((row_ind, col_ind)).transpose()
     return matches, matches[inlier_idxs], np.sum(match_costs[inlier_idxs])

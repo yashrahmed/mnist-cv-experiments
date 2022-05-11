@@ -44,8 +44,8 @@ def draw_matches(img_1, img_2, points_1, points_2, matches):
     img_1 = cv2.cvtColor(cv2.resize(img_1, new_size), cv2.COLOR_GRAY2BGR)
     img_2 = cv2.cvtColor(cv2.resize(img_2, new_size), cv2.COLOR_GRAY2BGR)
     img_3 = cv2.hconcat([img_1, img_2])
-    points_1 = np.round(points_1).astype(np.uint8) * 10
-    points_2 = (np.round(points_2).astype(np.uint8) + [0, 28]) * 10  # offset to account for a concatenated image
+    points_1 = np.round(points_1) * 10
+    points_2 = (np.round(points_2) + [0, 28]) * 10  # offset to account for a concatenated image
     for point in points_1:
         y, x = point
         img_3 = cv2.rectangle(img_3, (x, y), (x + 5, y + 5), blue_color, thickness)

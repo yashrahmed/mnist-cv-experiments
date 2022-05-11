@@ -132,7 +132,7 @@ def sample_points_using_clustering(image, n_clusters=10):
 
 def sample_points_from_contour(contours):
     # Assumes that the input is a simplified contour.
-    return swap_cols(np.unique(np.vstack(contours).astype(np.uint8).reshape([-1, 2]), axis=0))
+    return swap_cols(np.unique(np.vstack(contours).astype(np.uint16).reshape([-1, 2]), axis=0))
 
 
 def run_on_control_images_expr():
@@ -197,7 +197,7 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
     sp_2 = sample_points_from_contour(contour_2)
     descs_2 = get_sc(sp_2)
 
-    matches, inlier_matches, total_cost_first_time = calculate_correspondence(descs_1, descs_2, k=40)
+    matches, inlier_matches, total_cost_first_time = calculate_correspondence(descs_1, descs_2, max_rank=250)
 
     if viz:
         show_image(draw_matches(image_1, image_2, sp_1, sp_2, inlier_matches))
@@ -208,8 +208,8 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
 
     if viz:
         print(f'image distance after morphing = {diff}')
-        image_1 = draw_points_on_image(image_1, sp_1)
-        image_2 = draw_points_on_image(image_2, sp_2)
+        # image_1 = draw_points_on_image(image_1, sp_1)
+        # image_2 = draw_points_on_image(image_2, sp_2)
         show_images([image_1, image_2], scale=10)
 
     return diff
@@ -285,9 +285,7 @@ if __name__ == '__main__':
     train_images, train_labels, _, _ = load_actual_mnist()
     image_of_4 = threshold_image(train_images[train_labels == 4][314])
 
-    run_batch_scoring_experiments(train_images, train_labels)
-
-    # image_of_42 = threshold_image(train_images[train_labels == 4][10])
-    # image_of_5 = threshold_image(train_images[train_labels == 5][0])
-    # run_contour_sc_distance_with_morph(image_of_42, image_of_4)
-    # run_contour_sc_distance_with_morph(image_of_5, image_of_4)
+    image_of_42 = threshold_image(train_images[train_labels == 4][10])
+    image_of_5 = threshold_image(train_images[train_labels == 5][0])
+    run_contour_sc_distance_with_morph(image_of_42, image_of_4)
+    run_contour_sc_distance_with_morph(image_of_5, image_of_4)
