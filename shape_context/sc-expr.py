@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from numpy.linalg import norm
 from scipy.interpolate import RBFInterpolator as RBF
 from sklearn.cluster import AgglomerativeClustering
 
@@ -75,7 +76,7 @@ def morph(point_matches, pts_1, pts_2, img_1):
     out_img = np.zeros([r, c]).astype(np.uint8)
     n, _ = point_matches.shape
     matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]]).reshape([-1, 2])
-    interp = RBF(pts_1[:n, :], matched_pts, kernel='thin_plate_spline')
+    interp = RBF(pts_1[:n, :], matched_pts, kernel='linear', neighbors=8)
     x_points, y_points = np.where(img_1 >= 255)
     points = np.vstack((x_points, y_points)).transpose().astype(np.uint8)
     new_points = np.round(interp(points)).astype(np.uint8)
@@ -186,7 +187,7 @@ def run_sc_distance_with_morph(image_1, image_2, k=1, n_clusters=30):
     print(f'{k}th time cost = {total_cost_after_final_morph}')
 
 
-def run_contour_sc_distance_with_morph(image_1, image_2):
+def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
     # image 1 and 2 are binary images.
     contour_1, _ = get_contours(image_1)
     sp_1 = sample_points_from_contour(contour_1)
@@ -197,14 +198,21 @@ def run_contour_sc_distance_with_morph(image_1, image_2):
     descs_2 = get_sc(sp_2)
 
     matches, inlier_matches, total_cost_first_time = calculate_correspondence(descs_1, descs_2, k=40)
-    show_image(draw_matches(image_1, image_2, sp_1, sp_2, inlier_matches))
+
+    if viz:
+        show_image(draw_matches(image_1, image_2, sp_1, sp_2, inlier_matches))
 
     # Morph once.......
-    image_1, sp_1 = morph_affine(inlier_matches, sp_1, sp_2, image_1)
+    image_1, sp_1 = morph(inlier_matches, sp_1, sp_2, image_1)
+    diff = norm(image_1 - image_2)
 
-    image_1 = draw_points_on_image(image_1, sp_1)
-    image_2 = draw_points_on_image(image_2, sp_2)
-    show_images([image_1, image_2], scale=10)
+    if viz:
+        print(f'image distance after morphing = {diff}')
+        image_1 = draw_points_on_image(image_1, sp_1)
+        image_2 = draw_points_on_image(image_2, sp_2)
+        show_images([image_1, image_2], scale=10)
+
+    return diff
 
 
 def run_sc_distance_with_morph_with_homography(image_1, image_2, k=1, n_clusters=20):
@@ -245,11 +253,41 @@ def builtin_shape_context_dist_experiment():
         f'dist b/w corner shapes = {dist_extractor.computeDistance(sp_c.reshape([4, 1, 2]), sp_c2.reshape([4, 1, 2]))}')
 
 
+def run_batch_scoring_experiments(images, labels):
+    # Results might be a little misleading as they may not directly apply to a KNN application.
+    img_of_4 = threshold_image(images[labels == 4][314])
+    tgt_match_images = images[labels == 4][0:50]
+    tgt_non_match_images = images[labels == 8][0:50]
+    sc_match_count = 0
+    trivial_match_count = 0
+    total_count = 0
+    for i, m_img in enumerate(tgt_match_images):
+        m_img = threshold_image(m_img)
+        for j, nm_img in enumerate(tgt_non_match_images):
+            # print(i,j)
+            nm_img = threshold_image(nm_img)
+            tgt_match_dist = run_contour_sc_distance_with_morph(m_img, img_of_4, viz=False)
+            other_match_dist = run_contour_sc_distance_with_morph(nm_img, img_of_4, viz=False)
+            tgt_match_dist_simple = norm(img_of_4 - m_img)
+            other_match_dist_match_dist_simple = norm(img_of_4 - nm_img)
+            if tgt_match_dist < other_match_dist:
+                sc_match_count += 1
+            if tgt_match_dist_simple < other_match_dist_match_dist_simple:
+                trivial_match_count += 1
+            total_count += 1
+    print(
+        f'With SC: Correctly discriminated in {sc_match_count} of {total_count} trials. {(sc_match_count / total_count) * 100}%')
+    print(
+        f'With Simple: Correctly discriminated in {trivial_match_count} of {total_count} trials. {(trivial_match_count / total_count) * 100}%')
+
+
 if __name__ == '__main__':
     train_images, train_labels, _, _ = load_actual_mnist()
     image_of_4 = threshold_image(train_images[train_labels == 4][314])
-    image_of_42 = threshold_image(train_images[train_labels == 4][2178])
-    image_of_5 = threshold_image(train_images[train_labels == 5][64])
 
-    run_contour_sc_distance_with_morph(image_of_42, image_of_4)
-    run_contour_sc_distance_with_morph(image_of_5, image_of_4)
+    run_batch_scoring_experiments(train_images, train_labels)
+
+    # image_of_42 = threshold_image(train_images[train_labels == 4][10])
+    # image_of_5 = threshold_image(train_images[train_labels == 5][0])
+    # run_contour_sc_distance_with_morph(image_of_42, image_of_4)
+    # run_contour_sc_distance_with_morph(image_of_5, image_of_4)
