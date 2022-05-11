@@ -3,9 +3,10 @@ import numpy as np
 from numpy.linalg import norm
 from scipy.interpolate import RBFInterpolator as RBF
 from sklearn.cluster import AgglomerativeClustering
+from tps import ThinPlateSpline
 
 from common.dataset_utils import load_actual_mnist
-from common.img_utils import draw_matches, show_image, show_images, draw_points_on_image
+from common.img_utils import draw_matches, show_image, show_images
 from common.plot_utils import scatter_plot
 from shape_context_desc import compute_descriptor as get_sc, calculate_correspondence
 
@@ -81,6 +82,23 @@ def morph(point_matches, pts_1, pts_2, img_1):
     points = np.vstack((x_points, y_points)).transpose().astype(np.uint8)
     new_points = np.round(interp(points)).astype(np.uint8)
     pts_1 = np.round(interp(pts_1)).astype(np.uint8)
+    for pt in new_points:
+        if 0 <= pt[0] < r and 0 <= pt[1] < c:
+            out_img[pt[0]][pt[1]] = 255
+    return out_img, pts_1
+
+
+def morph_pure_tps(point_matches, pts_1, pts_2, img_1):
+    r, c = img_1.shape
+    out_img = np.zeros([r, c]).astype(np.uint8)
+    n, _ = point_matches.shape
+    matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]]).reshape([-1, 2])
+    tps = ThinPlateSpline(0.01)
+    tps.fit(pts_1[:n, :], matched_pts)
+    x_points, y_points = np.where(img_1 >= 255)
+    points = np.vstack((x_points, y_points)).transpose().astype(np.uint8)
+    new_points = np.round(tps.transform(points)).astype(np.uint8)
+    pts_1 = np.round(tps.transform(pts_1)).astype(np.uint8)
     for pt in new_points:
         if 0 <= pt[0] < r and 0 <= pt[1] < c:
             out_img[pt[0]][pt[1]] = 255
@@ -203,7 +221,7 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
         show_image(draw_matches(image_1, image_2, sp_1, sp_2, inlier_matches))
 
     # Morph once.......
-    image_1, sp_1 = morph(inlier_matches, sp_1, sp_2, image_1)
+    image_1, sp_1 = morph_pure_tps(inlier_matches, sp_1, sp_2, image_1)
     diff = norm(image_1 - image_2)
 
     if viz:
