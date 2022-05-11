@@ -17,6 +17,17 @@ def calculate_correspondence(desc1, desc2, max_rank=20):
     return matches, inlier_idxs, match_costs
 
 
+def calculate_correspondence_for_manual_viz(desc1, desc2, max_rank=20):
+    cost_mat = compute_cost_matrix(desc1, desc2)
+    row_ind, col_ind = linear_sum_assignment(cost_mat)
+    match_costs = np.array([cost_mat[row_ind[i]][col_ind[i]] for i in range(0, row_ind.shape[0])])
+    cost_limit = np.max(np.partition(match_costs, max_rank)[:max_rank]) if match_costs.shape[0] > max_rank else np.max(
+        match_costs)
+    inlier_idxs = np.where(match_costs <= cost_limit)
+    matches = np.vstack((row_ind, col_ind)).transpose()
+    return matches, inlier_idxs, match_costs, cost_mat, desc1, desc2
+
+
 def compute_cost_matrix(desc1, desc2):
     r1, c1 = desc1.shape
     r2, c2 = desc2.shape

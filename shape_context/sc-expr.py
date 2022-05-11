@@ -6,9 +6,10 @@ from sklearn.cluster import AgglomerativeClustering
 from tps import ThinPlateSpline
 
 from common.dataset_utils import load_actual_mnist
-from common.img_utils import draw_matches, show_image, show_images
+from common.img_utils import draw_matches, draw_matches_for_manual_viz, show_image, show_images
 from common.plot_utils import scatter_plot
-from shape_context_desc import compute_descriptor as get_sc, calculate_correspondence
+from shape_context_desc import compute_descriptor as get_sc, calculate_correspondence, \
+    calculate_correspondence_for_manual_viz
 
 
 def swap_cols(x):
@@ -216,9 +217,13 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
     sp_2 = sample_points_from_contour(contour_2)
     descs_2 = get_sc(sp_2)
 
-    matches, inlier_idxs, match_costs = calculate_correspondence(descs_1, descs_2, max_rank=400)
+    # matches, inlier_idxs, match_costs = calculate_correspondence(descs_1, descs_2, max_rank=400)
+    matches, inlier_idxs, match_costs, cost_mat, desc1, desc2 = calculate_correspondence_for_manual_viz(descs_1,
+                                                                                                        descs_2,
+                                                                                                        max_rank=400)
     if viz:
-        show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches[inlier_idxs]))
+        # show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches[inlier_idxs]))
+        draw_matches_for_manual_viz(image_1, image_2, sp_1, sp_2, matches, match_costs, inlier_idxs, cost_mat, desc1, desc2)
 
     # Morph once.......
     image_1, sp_1 = morph(matches[inlier_idxs], sp_1, sp_2, image_1)
@@ -310,4 +315,4 @@ if __name__ == '__main__':
     image_of_42 = threshold_image(train_images[train_labels == 4][10])
     image_of_5 = threshold_image(train_images[train_labels == 5][0])
     run_contour_sc_distance_with_morph(image_of_42, image_of_4)
-    run_contour_sc_distance_with_morph(image_of_5, image_of_4)
+    # run_contour_sc_distance_with_morph(image_of_5, image_of_4)
