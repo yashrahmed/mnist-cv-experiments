@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from scipy.spatial import KDTree
 
 
 def draw_contours_on_image(image, contours):
@@ -61,10 +62,40 @@ def draw_matches(img_1, img_2, points_1, points_2, matches):
 
 
 def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs, inlier_idxs, cost_mat, desc1, desc2):
+    def invert(tup):
+        return tup[1], tup[0]
+
+    def find_bbox(points):
+        left = np.min(points[:, 1])
+        right = np.max(points[:, 1])
+        top = np.min(points[:, 0])
+        bottom = np.max(points[:, 0])
+        return (top, left), (bottom, right)
+
+    def scale_from_bbox(bbox, points):
+        (top, left), (bottom, right) = bbox
+        out_points = np.copy(points).astype(np.float32)
+        out_points[:, 0] = points[:, 0] * (bottom - top) + top
+        out_points[:, 1] = points[:, 1] * (right - left) + left
+        return np.round(out_points).astype(np.uint16)
+
+    def scale_to_bbox(bbox, points):
+        (top, left), (bottom, right) = bbox
+        out_points = np.copy(points).astype(np.float32)
+        out_points[:, 0] = (points[:, 0] - top) / (bottom - top + 0.001)
+        out_points[:, 1] = (points[:, 1] - left) / (right - left + 0.001)
+        return out_points
+
+    def get_nns(scaled_points_query, scaled_points_tgt):
+        kd_tree = KDTree(scaled_points_tgt, leafsize=5)
+        _, idxs = kd_tree.query(scaled_points_query)
+        return idxs
+
     red_color = (0, 0, 255)
     blue_color = (255, 0, 0)
     yellow_color = (0, 255, 255)
-    green_color = (255, 0, 0)
+    green_color = (0, 255, 0)
+    cyan_color = (255, 255, 0)
     new_size = (280, 280)
     thickness = 1
     img_1 = cv2.cvtColor(cv2.resize(img_1, new_size), cv2.COLOR_GRAY2BGR)
@@ -72,26 +103,43 @@ def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs
     img_3 = cv2.hconcat([img_1, img_2])
     points_1 = np.round(points_1) * 10
     points_2 = (np.round(points_2) + [0, 28]) * 10  # offset to account for a concatenated image
+
+    top_left, bottom_right = find_bbox(points_1)
+    cv2.rectangle(img_3, invert(top_left), invert(bottom_right), green_color, thickness)
+    scaled_pts_1 = scale_to_bbox((top_left, bottom_right), points_1)
+    top_left, bottom_right = find_bbox(points_2)
+    cv2.rectangle(img_3, invert(top_left), invert(bottom_right), green_color, thickness)
+    scaled_pts_2 = scale_to_bbox((top_left, bottom_right), points_2)
+    points_1_nn = points_2[get_nns(scaled_pts_1, scaled_pts_2)]
+
     for point in points_1:
         y, x = point
-        cv2.rectangle(img_3, (x, y), (x + 5, y + 5), blue_color, thickness)
+        cv2.rectangle(img_3, (x - 2, y - 2), (x + 2, y + 2), blue_color, thickness)
     for point in points_2:
         y, x = point
-        cv2.rectangle(img_3, (x, y), (x + 5, y + 5), blue_color, thickness)
+        cv2.rectangle(img_3, (x - 2, y - 2), (x + 2, y + 2), blue_color, thickness)
     for i, match in enumerate(matches):
         m1, m2 = match
         y1, x1 = points_1[m1]
         y2, x2 = points_2[m2]
-        top_3_idx = np.argsort(cost_mat[m1])[:3]
-        nn_idx = top_3_idx[0]
+
         img_match = np.copy(img_3)
+        # Draw top-3 matches
+        top_3_idx = np.argsort(cost_mat[m1])[:3]
         cv2.line(img_match, (x1, y1), (x2, y2), red_color, thickness)
         for idx in top_3_idx:
             y2_idx, x2_idx = points_2[idx]
             cv2.line(img_match, (x1, y1), (x2_idx, y2_idx), green_color, thickness)
-        y2_best, x2_best = points_2[nn_idx]
+
+        # Draw best match by cost
+        bes_match_idx = top_3_idx[0]
+        y2_best, x2_best = points_2[bes_match_idx]
         img_match = cv2.line(img_match, (x1, y1), (x2_best, y2_best), yellow_color, thickness)
-        print(f'{x1},{y1} --> {x2},{y2} : LA_cost={costs[i]} NN_cost={cost_mat[m1][nn_idx]}')
+
+        # Draw best match by NN search on position
+        y2_nn, x2_nn = points_1_nn[m1]
+        img_match = cv2.line(img_match, (x1, y1), (x2_nn, y2_nn), cyan_color, thickness)
+        # print(f'{x1},{y1} --> {x2},{y2} : LA_cost={costs[i]} NN_cost={cost_mat[m1][bes_match_idx]}')
         cv2.imshow('yo', img_match)
         cv2.waitKey(0)
 
