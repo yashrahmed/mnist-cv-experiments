@@ -14,7 +14,7 @@ def calculate_correspondence(desc1, desc2, max_rank=20):
         match_costs)
     inlier_idxs = np.where(match_costs <= cost_limit)
     matches = np.vstack((row_ind, col_ind)).transpose()
-    return matches, matches[inlier_idxs], np.sum(match_costs[inlier_idxs])
+    return matches, inlier_idxs, match_costs
 
 
 def compute_cost_matrix(desc1, desc2):

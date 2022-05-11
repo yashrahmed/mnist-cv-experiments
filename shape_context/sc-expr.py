@@ -188,10 +188,11 @@ def run_sc_distance_with_morph(image_1, image_2, k=1, n_clusters=30):
     sp_2 = sample_points_using_clustering(image_2, n_clusters=n_clusters)
     descs_2 = get_sc(sp_2)
 
-    matches, _, total_cost_first_time = calculate_correspondence(descs_1, descs_2)
+    matches, inlier_idxs, match_costs = calculate_correspondence(descs_1, descs_2)
     show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
 
-    total_cost_after_final_morph = total_cost_first_time
+    first_time_cost = np.sum(match_costs[inlier_idxs])
+    total_cost_after_final_morph = first_time_cost
     # Perform morphing k times.....
     for i in range(0, k):
         image_1 = morph(matches, sp_1, sp_2, image_1)
@@ -201,7 +202,7 @@ def run_sc_distance_with_morph(image_1, image_2, k=1, n_clusters=30):
         matches, _, total_cost_after_final_morph = calculate_correspondence(descs_1, descs_2)
         show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
 
-    print(f'first time cost = {total_cost_first_time}')
+    print(f'first time cost = {first_time_cost}')
     print(f'{k}th time cost = {total_cost_after_final_morph}')
 
 
@@ -215,13 +216,12 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
     sp_2 = sample_points_from_contour(contour_2)
     descs_2 = get_sc(sp_2)
 
-    matches, inlier_matches, total_cost_first_time = calculate_correspondence(descs_1, descs_2, max_rank=250)
-
+    matches, inlier_idxs, match_costs = calculate_correspondence(descs_1, descs_2, max_rank=400)
     if viz:
-        show_image(draw_matches(image_1, image_2, sp_1, sp_2, inlier_matches))
+        show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches[inlier_idxs]))
 
     # Morph once.......
-    image_1, sp_1 = morph_pure_tps(inlier_matches, sp_1, sp_2, image_1)
+    image_1, sp_1 = morph(matches[inlier_idxs], sp_1, sp_2, image_1)
     diff = norm(image_1 - image_2)
 
     if viz:
@@ -241,8 +241,10 @@ def run_sc_distance_with_morph_with_homography(image_1, image_2, k=1, n_clusters
     sp_2 = sample_points_using_clustering(image_2, n_clusters=n_clusters)
     descs_2 = get_sc(sp_2)
 
-    matches, _, total_cost_first_time = calculate_correspondence(descs_1, descs_2)
-    show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
+    matches, inlier_idxs, match_costs = calculate_correspondence(descs_1, descs_2)
+    total_cost_first_time = np.sum(match_costs[inlier_idxs])
+
+    show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches[inlier_idxs]))
 
     total_cost_after_final_morph = total_cost_first_time
     # Perform morphing k times.....
@@ -251,7 +253,9 @@ def run_sc_distance_with_morph_with_homography(image_1, image_2, k=1, n_clusters
         sp_1 = sample_points_using_clustering(image_1, n_clusters=n_clusters)
         descs_1 = get_sc(sp_1)
 
-        matches, _, total_cost_after_final_morph = calculate_correspondence(descs_1, descs_2)
+        matches, inlier_idxs, match_costs = calculate_correspondence(descs_1, descs_2)
+        total_cost_after_final_morph = np.sum(match_costs[inlier_idxs])
+
         show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
 
     print(f'first time cost = {total_cost_first_time}')
