@@ -226,7 +226,7 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
         draw_matches_for_manual_viz(image_1, image_2, sp_1, sp_2, matches, match_costs, inlier_idxs, cost_mat, desc1, desc2)
 
     # Morph once.......
-    image_1, sp_1 = morph(matches[inlier_idxs], sp_1, sp_2, image_1)
+    # image_1, sp_1 = morph(matches[inlier_idxs], sp_1, sp_2, image_1)
     diff = norm(image_1 - image_2)
 
     if viz:

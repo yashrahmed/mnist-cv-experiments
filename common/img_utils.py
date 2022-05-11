@@ -64,6 +64,7 @@ def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs
     red_color = (0, 0, 255)
     blue_color = (255, 0, 0)
     yellow_color = (0, 255, 255)
+    green_color = (255, 0, 0)
     new_size = (280, 280)
     thickness = 1
     img_1 = cv2.cvtColor(cv2.resize(img_1, new_size), cv2.COLOR_GRAY2BGR)
@@ -81,14 +82,18 @@ def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs
         m1, m2 = match
         y1, x1 = points_1[m1]
         y2, x2 = points_2[m2]
-        nn_idx = np.argmin(cost_mat[m1])
+        top_3_idx = np.argsort(cost_mat[m1])[:3]
+        nn_idx = top_3_idx[0]
+        img_match = np.copy(img_3)
+        cv2.line(img_match, (x1, y1), (x2, y2), red_color, thickness)
+        for idx in top_3_idx:
+            y2_idx, x2_idx = points_2[idx]
+            cv2.line(img_match, (x1, y1), (x2_idx, y2_idx), green_color, thickness)
         y2_best, x2_best = points_2[nn_idx]
-        img_match = cv2.line(np.copy(img_3), (x1, y1), (x2_best, y2_best), yellow_color, thickness)
-        img_match = cv2.line(img_match, (x1, y1), (x2, y2), red_color, thickness)
+        img_match = cv2.line(img_match, (x1, y1), (x2_best, y2_best), yellow_color, thickness)
         print(f'{x1},{y1} --> {x2},{y2} : LA_cost={costs[i]} NN_cost={cost_mat[m1][nn_idx]}')
         cv2.imshow('yo', img_match)
         cv2.waitKey(0)
-    return img_3
 
 
 def load_image(img_path):
