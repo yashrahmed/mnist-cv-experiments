@@ -72,13 +72,6 @@ def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs
         bottom = np.max(points[:, 0])
         return (top, left), (bottom, right)
 
-    def scale_from_bbox(bbox, points):
-        (top, left), (bottom, right) = bbox
-        out_points = np.copy(points).astype(np.float32)
-        out_points[:, 0] = points[:, 0] * (bottom - top) + top
-        out_points[:, 1] = points[:, 1] * (right - left) + left
-        return np.round(out_points).astype(np.uint16)
-
     def scale_to_bbox(bbox, points):
         (top, left), (bottom, right) = bbox
         out_points = np.copy(points).astype(np.float32)
@@ -91,27 +84,50 @@ def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs
         _, idxs = kd_tree.query(scaled_points_query)
         return idxs
 
+    def render_desc(desc, label):
+        lowest = np.min(desc)
+        highest = np.max(desc)
+        pixels_per_desc = 20
+        desc_img = np.zeros([120, 240]).astype(np.uint8)
+        desc_array = desc.reshape([5, 12]).repeat(pixels_per_desc, axis=0).repeat(pixels_per_desc, axis=1)
+        desc_img = cv2.cvtColor(desc_img, cv2.COLOR_GRAY2BGR)
+        desc_img[0:100, :, 1] = np.interp(desc_array, [lowest, highest], [15, 255]).astype(np.uint8)
+        desc_img[0:100, :, 2] = desc_img[0:100, :, 1]
+        cv2.putText(desc_img, label, (100, 115), cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.6, color=magenta_color)
+        return desc_img
+
+    def render_descs(tgt_desc, match_desc, best_cost_desc, nn_desc):
+        desc_img_top = cv2.hconcat((render_desc(tgt_desc, 'tgt_desc'), render_desc(match_desc, 'matched_desc')))
+        desc_img_bottom = cv2.hconcat((render_desc(best_cost_desc, 'low_cost_desc'), render_desc(nn_desc, 'NN_desc')))
+        return cv2.vconcat((desc_img_top, desc_img_bottom))
+
     red_color = (0, 0, 255)
     blue_color = (255, 0, 0)
     yellow_color = (0, 255, 255)
     green_color = (0, 255, 0)
     cyan_color = (255, 255, 0)
+    magenta_color = (255, 0, 255)
     new_size = (280, 280)
     thickness = 1
     img_1 = cv2.cvtColor(cv2.resize(img_1, new_size), cv2.COLOR_GRAY2BGR)
     img_2 = cv2.cvtColor(cv2.resize(img_2, new_size), cv2.COLOR_GRAY2BGR)
     img_3 = cv2.hconcat([img_1, img_2])
+
     points_1 = np.round(points_1) * 10
     points_2 = (np.round(points_2) + [0, 28]) * 10  # offset to account for a concatenated image
 
+    # Bounding box scaling and nn matching.
     top_left, bottom_right = find_bbox(points_1)
     cv2.rectangle(img_3, invert(top_left), invert(bottom_right), green_color, thickness)
     scaled_pts_1 = scale_to_bbox((top_left, bottom_right), points_1)
     top_left, bottom_right = find_bbox(points_2)
     cv2.rectangle(img_3, invert(top_left), invert(bottom_right), green_color, thickness)
     scaled_pts_2 = scale_to_bbox((top_left, bottom_right), points_2)
-    points_1_nn = points_2[get_nns(scaled_pts_1, scaled_pts_2)]
+    nn_idxs = get_nns(scaled_pts_1, scaled_pts_2)
+    points_1_nn = points_2[nn_idxs]
+    nn_descs = desc2[nn_idxs]
 
+    # Draw bounding boxes.
     for point in points_1:
         y, x = point
         cv2.rectangle(img_3, (x - 2, y - 2), (x + 2, y + 2), blue_color, thickness)
@@ -124,12 +140,16 @@ def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs
         y2, x2 = points_2[m2]
 
         img_match = np.copy(img_3)
-        # Draw top-3 matches
-        top_3_idx = np.argsort(cost_mat[m1])[:3]
+
+        # Draw actual match
         cv2.line(img_match, (x1, y1), (x2, y2), red_color, thickness)
-        for idx in top_3_idx:
-            y2_idx, x2_idx = points_2[idx]
-            cv2.line(img_match, (x1, y1), (x2_idx, y2_idx), green_color, thickness)
+
+        top_3_idx = np.argsort(cost_mat[m1])[:3]
+
+        # Draw top-3 matches
+        # for idx in top_3_idx:
+        #     y2_idx, x2_idx = points_2[idx]
+        #     cv2.line(img_match, (x1, y1), (x2_idx, y2_idx), green_color, thickness)
 
         # Draw best match by cost
         bes_match_idx = top_3_idx[0]
@@ -139,8 +159,11 @@ def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs
         # Draw best match by NN search on position
         y2_nn, x2_nn = points_1_nn[m1]
         img_match = cv2.line(img_match, (x1, y1), (x2_nn, y2_nn), cyan_color, thickness)
-        # print(f'{x1},{y1} --> {x2},{y2} : LA_cost={costs[i]} NN_cost={cost_mat[m1][bes_match_idx]}')
-        cv2.imshow('yo', img_match)
+        print(f'{x1},{y1} --> {x2},{y2} : LA_cost={costs[i]} LOW_cost={cost_mat[m1][bes_match_idx]}')
+
+        # Render descriptors
+        cv2.imshow('descriptors', render_descs(desc1[m1], desc2[m2], desc2[bes_match_idx], nn_descs[m1]))
+        cv2.imshow('Matches', img_match)
         cv2.waitKey(0)
 
 
