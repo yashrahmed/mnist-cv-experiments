@@ -55,6 +55,7 @@ def compute_cost_matrix_raw(desc1, desc2):
 
 def compute_descriptor(vec, d_bin=6, t_bin=13):
     n, _ = vec.shape
+    vec = vec.astype(np.float32)
     d_inner = 0.01
     d_outer = 3
     t_start = 0
@@ -71,14 +72,14 @@ def compute_descriptor(vec, d_bin=6, t_bin=13):
 def get_pairwise_dists(vec):
     # vec is a NX2 array.
     n, _ = vec.shape
-    dists = squareform(pdist(vec.astype(np.float32)))
+    dists = squareform(pdist(vec))
     return dists.reshape([n, -1]) / np.median(dists)
 
 
 def get_pairwise_slopes(vec):
     n, _ = vec.shape
-    xs = vec[:, 0:1].astype(np.float32)
-    ys = vec[:, 1:2].astype(np.float32)
+    xs = vec[:, 0:1]
+    ys = vec[:, 1:2]
     dx = xs.transpose() - xs
     dy = ys.transpose() - ys
     angles = arctan2(dy, dx).reshape([n, -1]) + pi
