@@ -71,14 +71,14 @@ def compute_descriptor(vec, d_bin=6, t_bin=13):
 def get_pairwise_dists(vec):
     # vec is a NX2 array.
     n, _ = vec.shape
-    dists = squareform(pdist(vec))
+    dists = squareform(pdist(vec.astype(np.float32)))
     return dists.reshape([n, -1]) / np.median(dists)
 
 
 def get_pairwise_slopes(vec):
     n, _ = vec.shape
-    xs = vec[:, 0:1]
-    ys = vec[:, 1:2]
+    xs = vec[:, 0:1].astype(np.float32)
+    ys = vec[:, 1:2].astype(np.float32)
     dx = xs.transpose() - xs
     dy = ys.transpose() - ys
     angles = arctan2(dy, dx).reshape([n, -1]) + pi

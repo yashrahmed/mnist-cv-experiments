@@ -6,7 +6,7 @@ from sklearn.cluster import AgglomerativeClustering
 from tps import ThinPlateSpline
 
 from common.dataset_utils import load_actual_mnist
-from common.img_utils import draw_matches, draw_matches_for_manual_viz, show_image, show_images
+from common.img_utils import draw_matches, draw_points_on_image, draw_matches_for_manual_viz, show_image, show_images
 from common.plot_utils import scatter_plot
 from shape_context_desc import compute_descriptor as get_sc, calculate_correspondence, \
     calculate_correspondence_for_manual_viz
