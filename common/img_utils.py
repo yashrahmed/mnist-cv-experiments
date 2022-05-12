@@ -15,9 +15,10 @@ def draw_polygons_on_image(image, polygons):
 
 
 def draw_points_on_image(image, points):
-    image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
-    for point in points:
-        cv2.drawMarker(image, (point[1], point[0]), (0, 255, 0), cv2.MARKER_SQUARE, markerSize=1, thickness=1)
+    h, w = image.shape
+    image = cv2.resize(cv2.cvtColor(image, cv2.COLOR_GRAY2BGR), (h * 10, w * 10))
+    for point in np.round(points) * 10:
+        cv2.rectangle(image, (point[1] - 2, point[0] - 2), (point[1] + 2, point[0] + 2), (0, 255, 0), 1)
     return image
 
 
