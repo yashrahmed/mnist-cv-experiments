@@ -68,15 +68,17 @@ def compute_descriptor(vec, d_bin=6, t_bin=13):
 
     dists = get_pairwise_dists(vec)
     angles = get_pairwise_slopes(vec)
+    median_dist = np.median(dists)
+    dists = dists / median_dist
     descs = np.array([histogram2d(dists[i, :], angles[i, :], bins=[d_bin_edges, t_bin_edges])[0] for i in range(n)])
-    return descs.reshape([n, -1])
+    return descs.reshape([n, -1]), median_dist
 
 
 def get_pairwise_dists(vec):
     # vec is a NX2 array.
     n, _ = vec.shape
     dists = squareform(pdist(vec))
-    return dists.reshape([n, -1]) / np.median(dists)
+    return dists.reshape([n, -1])
 
 
 def get_pairwise_slopes(vec):
