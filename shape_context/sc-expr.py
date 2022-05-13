@@ -89,12 +89,12 @@ def morph(point_matches, pts_1, pts_2, img_1):
     return out_img, pts_1
 
 
-def morph_pure_tps(point_matches, pts_1, pts_2, img_1):
+def morph_pure_tps(point_matches, pts_1, pts_2, img_1, reg_scale=1e3):
     r, c = img_1.shape
     out_img = np.zeros([r, c]).astype(np.uint8)
     n, _ = point_matches.shape
     matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]]).reshape([-1, 2])
-    tps = ThinPlateSpline(0.01)
+    tps = ThinPlateSpline(reg_scale)
     tps.fit(pts_1[:n, :], matched_pts)
     x_points, y_points = np.where(img_1 >= 255)
     points = np.vstack((x_points, y_points)).transpose().astype(np.uint8)
@@ -158,13 +158,13 @@ def run_on_control_images_expr():
     control_4_corners, control_4_corners_2, control_diamond = create_control_shapes()
 
     sp_c = sample_points_using_clustering(control_4_corners, n_clusters=4)
-    descs_c = get_sc(sp_c)
+    descs_c, _ = get_sc(sp_c)
 
     sp_c2 = sample_points_using_clustering(control_4_corners_2, n_clusters=4)
-    descs_c2 = get_sc(sp_c2)
+    descs_c2, _ = get_sc(sp_c2)
 
     sp_d = sample_points_using_clustering(control_diamond, n_clusters=4)
-    descs_d = get_sc(sp_d)
+    descs_d, _ = get_sc(sp_d)
 
     matches, _, total_cost = calculate_correspondence(descs_c, descs_c2)
     show_image(draw_matches(control_4_corners, control_4_corners_2, sp_c, sp_c2, matches))
@@ -184,10 +184,10 @@ def run_on_control_images_expr():
 def run_sc_distance_with_morph(image_1, image_2, k=1, n_clusters=30):
     # image 1 and 2 are binary images.
     sp_1 = sample_points_using_clustering(image_1, n_clusters=n_clusters)
-    descs_1 = get_sc(sp_1)
+    descs_1, _ = get_sc(sp_1)
 
     sp_2 = sample_points_using_clustering(image_2, n_clusters=n_clusters)
-    descs_2 = get_sc(sp_2)
+    descs_2, _ = get_sc(sp_2)
 
     matches, inlier_idxs, match_costs = calculate_correspondence(descs_1, descs_2)
     show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
@@ -198,7 +198,7 @@ def run_sc_distance_with_morph(image_1, image_2, k=1, n_clusters=30):
     for i in range(0, k):
         image_1 = morph(matches, sp_1, sp_2, image_1)
         sp_1 = sample_points_using_clustering(image_1, n_clusters=n_clusters)
-        descs_1 = get_sc(sp_1)
+        descs_1, _ = get_sc(sp_1)
 
         matches, _, total_cost_after_final_morph = calculate_correspondence(descs_1, descs_2)
         show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
@@ -211,30 +211,30 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
     # image 1 and 2 are binary images.
     contour_1, _ = get_contours(image_1)
     sp_1 = sample_points_from_contour(contour_1)
-    descs_1 = get_sc(sp_1)
+    descs_1, med_dist_1 = get_sc(sp_1)
 
     contour_2, _ = get_contours(image_2)
     sp_2 = sample_points_from_contour(contour_2)
-    descs_2 = get_sc(sp_2)
+    descs_2, med_dist_2 = get_sc(sp_2)
 
     # matches, inlier_idxs, match_costs = calculate_correspondence(descs_1, descs_2, max_rank=400)
     matches, inlier_idxs, match_costs, cost_mat, desc1, desc2 = calculate_correspondence_for_manual_viz(descs_1,
                                                                                                         descs_2,
                                                                                                         max_rank=400)
     if viz:
-        # show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches[inlier_idxs]))
-        draw_matches_for_manual_viz(image_1, image_2, sp_1, sp_2, matches, match_costs, inlier_idxs, cost_mat, desc1, desc2)
+        show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches[inlier_idxs]))
+        # draw_matches_for_manual_viz(image_1, image_2, sp_1, sp_2, matches, match_costs, inlier_idxs, cost_mat, desc1, desc2)
         print(f'total match costs = {np.sum(match_costs[inlier_idxs])}')
 
     # Morph once.......
-    # image_1, sp_1 = morph(matches[inlier_idxs], sp_1, sp_2, image_1)
+    image_1, sp_1 = morph_pure_tps(matches[inlier_idxs], sp_1, sp_2, image_1, reg_scale=med_dist_1**2)
     diff = norm(image_1 - image_2)
 
     if viz:
-        # print(f'image distance after morphing = {diff}')
-        # image_1 = draw_points_on_image(image_1, sp_1)
-        # image_2 = draw_points_on_image(image_2, sp_2)
-        # show_images([image_1, image_2], scale=10)
+        print(f'image distance after morphing = {diff}')
+        image_1 = draw_points_on_image(image_1, sp_1)
+        image_2 = draw_points_on_image(image_2, sp_2)
+        show_images([image_1, image_2])
         pass
 
     return diff
@@ -243,10 +243,10 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
 def run_sc_distance_with_morph_with_homography(image_1, image_2, k=1, n_clusters=20):
     # image 1 and 2 are binary images.
     sp_1 = sample_points_using_clustering(image_1, n_clusters=n_clusters)
-    descs_1 = get_sc(sp_1)
+    descs_1, _ = get_sc(sp_1)
 
     sp_2 = sample_points_using_clustering(image_2, n_clusters=n_clusters)
-    descs_2 = get_sc(sp_2)
+    descs_2, _ = get_sc(sp_2)
 
     matches, inlier_idxs, match_costs = calculate_correspondence(descs_1, descs_2)
     total_cost_first_time = np.sum(match_costs[inlier_idxs])
@@ -258,7 +258,7 @@ def run_sc_distance_with_morph_with_homography(image_1, image_2, k=1, n_clusters
     for i in range(0, k):
         image_1 = morph_homo(matches, sp_1, sp_2, image_1)
         sp_1 = sample_points_using_clustering(image_1, n_clusters=n_clusters)
-        descs_1 = get_sc(sp_1)
+        descs_1, _ = get_sc(sp_1)
 
         matches, inlier_idxs, match_costs = calculate_correspondence(descs_1, descs_2)
         total_cost_after_final_morph = np.sum(match_costs[inlier_idxs])
@@ -286,7 +286,7 @@ def run_batch_scoring_experiments(images, labels):
     # Results might be a little misleading as they may not directly apply to a KNN application.
     img_of_4 = threshold_image(images[labels == 4][314])
     tgt_match_images = images[labels == 4][0:50]
-    tgt_non_match_images = images[labels == 8][0:50]
+    tgt_non_match_images = images[labels == 5][0:50]
     sc_match_count = 0
     trivial_match_count = 0
     total_count = 0
@@ -314,7 +314,9 @@ if __name__ == '__main__':
     train_images, train_labels, _, _ = load_actual_mnist()
     image_of_4 = threshold_image(train_images[train_labels == 4][314])
 
-    image_of_42 = threshold_image(train_images[train_labels == 4][10])
-    image_of_5 = threshold_image(train_images[train_labels == 5][0])
+    # run_batch_scoring_experiments(train_images, train_labels)
+
+    image_of_42 = threshold_image(train_images[train_labels == 4][9])
+    image_of_5 = threshold_image(train_images[train_labels == 5][8])
     run_contour_sc_distance_with_morph(image_of_42, image_of_4)
-    # run_contour_sc_distance_with_morph(image_of_5, image_of_4)
+    run_contour_sc_distance_with_morph(image_of_5, image_of_4)
