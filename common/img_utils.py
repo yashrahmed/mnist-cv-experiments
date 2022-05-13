@@ -15,9 +15,10 @@ def draw_polygons_on_image(image, polygons):
 
 
 def draw_points_on_image(image, points):
-    h, w = image.shape
-    image = cv2.resize(cv2.cvtColor(image, cv2.COLOR_GRAY2BGR), (h * 10, w * 10))
-    for point in np.round(points) * 10:
+    w, h = image.shape
+    scale = 5
+    image = cv2.resize(cv2.cvtColor(image, cv2.COLOR_GRAY2BGR), (w * scale, h * scale))
+    for point in np.round(points) * scale:
         cv2.rectangle(image, (point[1] - 2, point[0] - 2), (point[1] + 2, point[0] + 2), (0, 255, 0), 1)
     return image
 
@@ -41,13 +42,16 @@ def draw_brief_features_on_image(image, coords, resize_value=(56, 56)):
 def draw_matches(img_1, img_2, points_1, points_2, matches):
     red_color = (0, 0, 255)
     blue_color = (255, 0, 0)
-    new_size = (280, 280)
+    scale = 5
+    assert img_1.shape == img_2.shape
+    w, h = img_1.shape
+    new_size = (w * scale, h * scale)
     thickness = 1
     img_1 = cv2.cvtColor(cv2.resize(img_1, new_size), cv2.COLOR_GRAY2BGR)
     img_2 = cv2.cvtColor(cv2.resize(img_2, new_size), cv2.COLOR_GRAY2BGR)
     img_3 = cv2.hconcat([img_1, img_2])
-    points_1 = np.round(points_1) * 10
-    points_2 = (np.round(points_2) + [0, 28]) * 10  # offset to account for a concatenated image
+    points_1 = np.round(points_1) * scale
+    points_2 = (np.round(points_2) + [0, w]) * scale  # offset to account for a concatenated image
     for point in points_1:
         y, x = point
         cv2.rectangle(img_3, (x, y), (x + 5, y + 5), blue_color, thickness)
@@ -108,14 +112,18 @@ def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs
     green_color = (0, 255, 0)
     cyan_color = (255, 255, 0)
     magenta_color = (255, 0, 255)
-    new_size = (280, 280)
+
+    assert img_1.shape == img_2.shape
+    scale = 5
+    w, h = img_1.shape
+    new_size = (w * scale, h * scale)
     thickness = 1
     img_1 = cv2.cvtColor(cv2.resize(img_1, new_size), cv2.COLOR_GRAY2BGR)
     img_2 = cv2.cvtColor(cv2.resize(img_2, new_size), cv2.COLOR_GRAY2BGR)
     img_3 = cv2.hconcat([img_1, img_2])
 
-    points_1 = np.round(points_1) * 10
-    points_2 = (np.round(points_2) + [0, 28]) * 10  # offset to account for a concatenated image
+    points_1 = np.round(points_1) * scale
+    points_2 = (np.round(points_2) + [0, w]) * scale  # offset to account for a concatenated image
 
     # Bounding box scaling and nn matching.
     top_left, bottom_right = find_bbox(points_1)
