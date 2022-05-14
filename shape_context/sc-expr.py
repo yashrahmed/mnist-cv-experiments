@@ -6,7 +6,8 @@ from sklearn.cluster import AgglomerativeClustering
 from tps import ThinPlateSpline
 
 from common.dataset_utils import load_actual_mnist
-from common.img_utils import draw_matches, draw_points_on_image, draw_matches_for_manual_viz, show_image, show_images
+from common.img_utils import draw_matches, draw_points_on_image, draw_matches_for_manual_viz, show_image, show_images, \
+    to_color
 from common.plot_utils import scatter_plot
 from shape_context_desc import compute_descriptor as get_sc, calculate_correspondence, \
     calculate_correspondence_for_manual_viz
@@ -153,9 +154,9 @@ def run_on_control_images_expr():
     descs_d, _ = get_sc(sp_d)
 
     matches, _, total_cost = calculate_correspondence(descs_c, descs_c2)
-    show_image(draw_matches(control_4_corners, control_4_corners_2, sp_c, sp_c2, matches))
+    show_image(draw_matches(to_color(control_4_corners), to_color(control_4_corners_2), sp_c, sp_c2, matches))
     matches, _, total_cost_2 = calculate_correspondence(descs_c, descs_d)
-    show_image(draw_matches(control_4_corners, control_diamond, sp_c, sp_d, matches))
+    show_image(draw_matches(to_color(control_4_corners), to_color(control_diamond), sp_c, sp_d, matches))
     print('histograms of corner image #1 ------------------->')
     print(descs_c.reshape([4, 5, 12]))
     print('histograms of corner image #2 ------------------->')
@@ -181,8 +182,8 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
     matches, desc1_inliers_idxs, desc2_inliers_idxs, match_costs, cost_mat, desc1, desc2\
         = calculate_correspondence_for_manual_viz(descs_1, descs_2)
     if viz:
-        #show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
-        draw_matches_for_manual_viz(image_1, image_2, sp_1, sp_2, matches, match_costs, cost_mat, desc1, desc2)
+        show_image(draw_matches(to_color(image_1), to_color(image_2), sp_1, sp_2, matches))
+        # draw_matches_for_manual_viz(to_color(image_1), to_color(image_2), sp_1, sp_2, matches, match_costs, cost_mat, desc1, desc2)
         print(f'total match costs = {np.sum(match_costs)}')
 
     # Morph once.......
@@ -195,6 +196,8 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
 
     if viz:
         print(f'image distance after morphing = {diff}')
+        image_1 = to_color(image_1)
+        image_2 = to_color(image_2)
         image_1 = draw_points_on_image(image_1, sp_1)
         image_2 = draw_points_on_image(image_2, sp_2)
         show_images([image_1, image_2])
@@ -221,7 +224,7 @@ def run_contour_sc_distance_with_morph_multiloop(image_1, image_2, viz=True, k=3
         matches, desc1_inliers_idxs, desc2_inliers_idxs, match_costs, cost_mat, desc1, desc2\
             = calculate_correspondence_for_manual_viz(descs_1, descs_2)
         if viz:
-            show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
+            show_image(draw_matches(to_color(image_1), to_color(image_2), sp_1, sp_2, matches))
             # draw_matches_for_manual_viz(image_1, image_2, sp_1, sp_2, matches, match_costs, cost_mat, desc1, desc2)
             print(f'total match costs = {np.sum(match_costs)}')
 
@@ -235,8 +238,8 @@ def run_contour_sc_distance_with_morph_multiloop(image_1, image_2, viz=True, k=3
 
     if viz:
         print(f'image distance after morphing = {diff}')
-        image_1 = draw_points_on_image(image_1, sp_1)
-        image_2 = draw_points_on_image(image_2, sp_2)
+        image_1 = draw_points_on_image(to_color(image_1), sp_1)
+        image_2 = draw_points_on_image(to_color(image_2), sp_2)
         show_images([image_1, image_2])
         pass
 

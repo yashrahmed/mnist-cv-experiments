@@ -3,33 +3,42 @@ import numpy as np
 from scipy.spatial import KDTree
 
 
+def draw_rects_on_image(image, rects):
+    assert len(image.shape) == 3  # Ensure that the input is a 3 channel image.
+    for rectangle in rects:
+        y1, x1, y2, x2 = rectangle
+        cv2.rectangle(image, (x1, y1), (x2, y2), (255, 0, 0), 1)
+
+
 def draw_contours_on_image(image, contours):
+    assert len(image.shape) == 3  # Ensure that the input is a 3 channel image.
     return cv2.drawContours(image, contours, -1, color=(0, 255, 0))
 
 
 def draw_polygons_on_image(image, polygons):
-    image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    assert len(image.shape) == 3  # Ensure that the input is a 3 channel image.
     for polygon in polygons:
         cv2.polylines(image, [polygon], True, (0, 255, 0), 1)
     return image
 
 
 def draw_points_on_image(image, points):
-    w, h = image.shape
+    assert len(image.shape) == 3  # Ensure that the input is a 3 channel image.
+    w, h, _ = image.shape
     scale = 5
-    image = cv2.resize(cv2.cvtColor(image, cv2.COLOR_GRAY2BGR), (w * scale, h * scale))
+    image = cv2.resize(image, (w * scale, h * scale))
     for point in np.round(points) * scale:
         cv2.rectangle(image, (point[1] - 2, point[0] - 2), (point[1] + 2, point[0] + 2), (0, 255, 0), 1)
     return image
 
 
 def draw_brief_features_on_image(image, coords, resize_value=(56, 56)):
+    assert len(image.shape) == 3  # Ensure that the input is a 3 channel image.
     red_color = (0, 0, 255)
     green_color = (0, 255, 0)
     thickness = 1
     alpha = 0.5
     image = cv2.resize(image, resize_value)
-    image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
     overlay = image.copy()
     for coord in coords:
         x1, y1, x2, y2 = coord
@@ -40,15 +49,17 @@ def draw_brief_features_on_image(image, coords, resize_value=(56, 56)):
 
 
 def draw_matches(img_1, img_2, points_1, points_2, matches):
+    assert len(img_1.shape) == 3  # Ensure that the input is a 3 channel image.
+    assert len(img_2.shape) == 3  # Ensure that the input is a 3 channel image.
+    assert img_1.shape == img_2.shape
     red_color = (0, 0, 255)
     blue_color = (255, 0, 0)
     scale = 5
-    assert img_1.shape == img_2.shape
-    w, h = img_1.shape
+    w, h, _ = img_1.shape
     new_size = (w * scale, h * scale)
     thickness = 1
-    img_1 = cv2.cvtColor(cv2.resize(img_1, new_size), cv2.COLOR_GRAY2BGR)
-    img_2 = cv2.cvtColor(cv2.resize(img_2, new_size), cv2.COLOR_GRAY2BGR)
+    img_1 = cv2.resize(img_1, new_size)
+    img_2 = cv2.resize(img_2, new_size)
     img_3 = cv2.hconcat([img_1, img_2])
     points_1 = np.round(points_1) * scale
     points_2 = (np.round(points_2) + [0, w]) * scale  # offset to account for a concatenated image
@@ -106,6 +117,10 @@ def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs
         desc_img_bottom = cv2.hconcat((render_desc(best_cost_desc, 'low_cost_desc'), render_desc(nn_desc, 'NN_desc')))
         return cv2.vconcat((desc_img_top, desc_img_bottom))
 
+    assert len(img_1.shape) == 3  # Ensure that the input is a 3 channel image.
+    assert len(img_2.shape) == 3  # Ensure that the input is a 3 channel image.
+    assert img_1.shape == img_2.shape
+
     red_color = (0, 0, 255)
     blue_color = (255, 0, 0)
     yellow_color = (0, 255, 255)
@@ -116,11 +131,11 @@ def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs
 
     assert img_1.shape == img_2.shape
     scale = 5
-    w, h = img_1.shape
+    w, h, _ = img_1.shape
     new_size = (w * scale, h * scale)
     thickness = 1
-    img_1 = cv2.cvtColor(cv2.resize(img_1, new_size), cv2.COLOR_GRAY2BGR)
-    img_2 = cv2.cvtColor(cv2.resize(img_2, new_size), cv2.COLOR_GRAY2BGR)
+    img_1 = cv2.resize(img_1, new_size)
+    img_2 = cv2.resize(img_2, new_size)
     img_3 = cv2.hconcat([img_1, img_2])
 
     points_1 = np.round(points_1) * scale
@@ -204,3 +219,8 @@ def show_images(images, disp_name='combined', scale=1):
     out_image = np.concatenate(images, axis=1)
     cv2.imshow(disp_name, out_image)
     cv2.waitKey(0)
+
+
+def to_color(image):
+    ch = len(image.shape)
+    return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) if ch == 2 else image
