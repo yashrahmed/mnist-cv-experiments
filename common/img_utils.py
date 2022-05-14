@@ -12,14 +12,13 @@ def draw_rects_on_image(image, rects):
 
 def draw_contours_on_image(image, contours):
     assert len(image.shape) == 3  # Ensure that the input is a 3 channel image.
-    return cv2.drawContours(image, contours, -1, color=(0, 255, 0))
+    cv2.drawContours(image, contours, -1, color=(0, 255, 0))
 
 
 def draw_polygons_on_image(image, polygons):
     assert len(image.shape) == 3  # Ensure that the input is a 3 channel image.
     for polygon in polygons:
         cv2.polylines(image, [polygon], True, (0, 255, 0), 1)
-    return image
 
 
 def draw_points_on_image(image, points):

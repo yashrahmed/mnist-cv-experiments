@@ -1,0 +1,11 @@
+Using euclidean distance ::
+
+Uniform weights -->
+N=2,score=96.98%
+N=3,score=97.58%
+N=4,score=97.39%
+
+Distance weights -->
+N=2,score=97.6%
+N=3,score=97.73% ****
+N=4,score=97.71%
