@@ -40,7 +40,13 @@ def calculate_correspondence_for_manual_viz(desc1, desc2):
     matches = np.vstack((row_idxs, col_idxs)).transpose()[:n1]
     matches = matches[np.where(matches[:, 1] < n2)]
     match_costs = np.array([cost_mat_padded[matches[i][0]][matches[i][1]] for i in range(0, min(n1, n2))])
-    return matches, desc1_inliers_idxs, desc2_inliers_idxs, match_costs, cost_mat, desc1, desc2
+    hauss_eq_cost = calculate_hausdorff_eq_cost(cost_mat)
+    return matches, desc1_inliers_idxs, desc2_inliers_idxs, match_costs, cost_mat, hauss_eq_cost, desc1, desc2
+
+
+def calculate_hausdorff_eq_cost(cost_matrix):
+    # Calculate shape context matching cost based on MATLAB reference implementation.
+    return max(np.mean(np.min(cost_matrix, axis=0)), np.mean(np.min(cost_matrix, axis=1)))
 
 
 def compute_cost_matrix(desc1, desc2):

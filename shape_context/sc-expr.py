@@ -179,19 +179,19 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
     descs_1, med_dist_1 = get_sc(sp_1)
     descs_2, med_dist_2 = get_sc(sp_2)
 
-    matches, desc1_inliers_idxs, desc2_inliers_idxs, match_costs, cost_mat, desc1, desc2\
+    matches, desc1_inliers_idxs, desc2_inliers_idxs, match_costs, cost_mat, hauss_eq_cost, desc1, desc2\
         = calculate_correspondence_for_manual_viz(descs_1, descs_2)
     if viz:
         show_image(draw_matches(to_color(image_1), to_color(image_2), sp_1, sp_2, matches))
         # draw_matches_for_manual_viz(to_color(image_1), to_color(image_2), sp_1, sp_2, matches, match_costs, cost_mat, desc1, desc2)
         print(f'total match costs = {np.sum(match_costs)}')
+        print(f'Haussdorff eq costs = {hauss_eq_cost}')
 
     # Morph once.......
     reg_scale = med_dist_1
     # sp_1, tps = morph_pure_tps(matches, sp_1, sp_2, reg_scale=med_dist_1**2)\
     sp_1, tps = morph(matches, sp_1, sp_2, reg_scale=reg_scale)
     image_1 = morph_image(tps, image_1)
-
     diff = norm(image_1 - image_2)
 
     if viz:
@@ -203,7 +203,7 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
         show_images([image_1, image_2])
         pass
 
-    return diff, np.sum(match_costs)
+    return diff, np.sum(match_costs), hauss_eq_cost
 
 
 def run_contour_sc_distance_with_morph_multiloop(image_1, image_2, viz=True, k=3):
@@ -221,7 +221,7 @@ def run_contour_sc_distance_with_morph_multiloop(image_1, image_2, viz=True, k=3
         descs_1, med_dist_1 = get_sc(sp_1[desc1_inliers_idxs])
         descs_2, med_dist_2 = get_sc(sp_2[desc2_inliers_idxs])
 
-        matches, desc1_inliers_idxs, desc2_inliers_idxs, match_costs, cost_mat, desc1, desc2\
+        matches, desc1_inliers_idxs, desc2_inliers_idxs, match_costs, cost_mat, hauss_eq_cost, desc1, desc2\
             = calculate_correspondence_for_manual_viz(descs_1, descs_2)
         if viz:
             show_image(draw_matches(to_color(image_1), to_color(image_2), sp_1, sp_2, matches))
@@ -272,11 +272,11 @@ def run_batch_scoring_experiments(images, labels):
         for j, nm_img in enumerate(tgt_non_match_images):
             # print(i,j)
             nm_img = threshold_image(nm_img)
-            tgt_match_dist, tgt_m_cost = run_contour_sc_distance_with_morph(m_img, img_of_4, viz=False)
-            other_match_dist, other_m_cost = run_contour_sc_distance_with_morph(nm_img, img_of_4, viz=False)
+            tgt_match_dist, _, tgt_hauss_cost = run_contour_sc_distance_with_morph(m_img, img_of_4, viz=False)
+            other_match_dist, _, other_match_cost = run_contour_sc_distance_with_morph(nm_img, img_of_4, viz=False)
             tgt_match_dist_simple = norm(img_of_4 - m_img)
             other_match_dist_match_dist_simple = norm(img_of_4 - nm_img)
-            if tgt_m_cost < other_m_cost:
+            if tgt_hauss_cost < other_match_cost:
                 sc_match_count += 1
             if tgt_match_dist_simple < other_match_dist_match_dist_simple:
                 trivial_match_count += 1
