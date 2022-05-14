@@ -73,37 +73,33 @@ def get_polygons(contours):
     return [get_polygon(contour) for contour in contours]
 
 
-def morph(point_matches, pts_1, pts_2, img_1):
-    r, c = img_1.shape
-    out_img = np.zeros([r, c]).astype(np.uint8)
+def morph(point_matches, pts_1, pts_2, reg_scale=1e3):
     n, _ = point_matches.shape
     matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]]).reshape([-1, 2])
-    interp = RBF(pts_1[:n, :], matched_pts, kernel='linear', neighbors=8)
-    x_points, y_points = np.where(img_1 >= 255)
-    points = np.vstack((x_points, y_points)).transpose().astype(np.uint8)
-    new_points = np.round(interp(points)).astype(np.uint8)
+    interp = RBF(pts_1[:n, :], matched_pts, kernel='thin_plate_spline', smoothing=reg_scale)
     pts_1 = np.round(interp(pts_1)).astype(np.uint8)
-    for pt in new_points:
-        if 0 <= pt[0] < r and 0 <= pt[1] < c:
-            out_img[pt[0]][pt[1]] = 255
-    return out_img, pts_1
+    return pts_1, interp
 
 
-def morph_pure_tps(point_matches, pts_1, pts_2, img_1, reg_scale=1e3):
-    r, c = img_1.shape
-    out_img = np.zeros([r, c]).astype(np.uint8)
+def morph_pure_tps(point_matches, pts_1, pts_2, reg_scale=1e3):
     n, _ = point_matches.shape
     matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]]).reshape([-1, 2])
     tps = ThinPlateSpline(reg_scale)
     tps.fit(pts_1[:n, :], matched_pts)
-    x_points, y_points = np.where(img_1 >= 255)
-    points = np.vstack((x_points, y_points)).transpose().astype(np.uint8)
-    new_points = np.round(tps.transform(points)).astype(np.uint8)
     pts_1 = np.round(tps.transform(pts_1)).astype(np.uint8)
+    return pts_1, tps
+
+
+def morph_image(txfm_func, image):
+    r, c = image.shape
+    out_img = np.zeros([r, c]).astype(np.uint8)
+    x_points, y_points = np.where(image >= 255)
+    points = np.vstack((x_points, y_points)).transpose().astype(np.float32)
+    new_points = np.round(txfm_func(points)).astype(np.uint8)
     for pt in new_points:
         if 0 <= pt[0] < r and 0 <= pt[1] < c:
             out_img[pt[0]][pt[1]] = 255
-    return out_img, pts_1
+    return out_img
 
 
 def morph_affine(point_matches, pts_1, pts_2, img_1):
@@ -181,43 +177,17 @@ def run_on_control_images_expr():
     print(f'cost of matching corner to diamond = {total_cost_2}')
 
 
-def run_sc_distance_with_morph(image_1, image_2, k=1, n_clusters=30):
-    # image 1 and 2 are binary images.
-    sp_1 = sample_points_using_clustering(image_1, n_clusters=n_clusters)
-    descs_1, _ = get_sc(sp_1)
-
-    sp_2 = sample_points_using_clustering(image_2, n_clusters=n_clusters)
-    descs_2, _ = get_sc(sp_2)
-
-    matches, inlier_idxs, match_costs = calculate_correspondence(descs_1, descs_2)
-    show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
-
-    first_time_cost = np.sum(match_costs[inlier_idxs])
-    total_cost_after_final_morph = first_time_cost
-    # Perform morphing k times.....
-    for i in range(0, k):
-        image_1 = morph(matches, sp_1, sp_2, image_1)
-        sp_1 = sample_points_using_clustering(image_1, n_clusters=n_clusters)
-        descs_1, _ = get_sc(sp_1)
-
-        matches, _, total_cost_after_final_morph = calculate_correspondence(descs_1, descs_2)
-        show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
-
-    print(f'first time cost = {first_time_cost}')
-    print(f'{k}th time cost = {total_cost_after_final_morph}')
-
-
 def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
     # image 1 and 2 are binary images.
     contour_1, _ = get_contours(image_1)
     sp_1 = sample_points_from_contour(contour_1)
-    descs_1, med_dist_1 = get_sc(sp_1)
 
     contour_2, _ = get_contours(image_2)
     sp_2 = sample_points_from_contour(contour_2)
+
+    descs_1, med_dist_1 = get_sc(sp_1)
     descs_2, med_dist_2 = get_sc(sp_2)
 
-    # matches, inlier_idxs, match_costs = calculate_correspondence(descs_1, descs_2, max_rank=400)
     matches, desc1_inliers_idxs, desc2_inliers_idxs, match_costs, cost_mat, desc1, desc2\
         = calculate_correspondence_for_manual_viz(descs_1, descs_2)
     if viz:
@@ -226,7 +196,51 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
         print(f'total match costs = {np.sum(match_costs)}')
 
     # Morph once.......
-    image_1, sp_1 = morph_pure_tps(matches, sp_1, sp_2, image_1, reg_scale=med_dist_1**2)
+    reg_scale = med_dist_1
+    # sp_1, tps = morph_pure_tps(matches, sp_1, sp_2, reg_scale=med_dist_1**2)\
+    sp_1, tps = morph(matches, sp_1, sp_2, reg_scale=reg_scale)
+    image_1 = morph_image(tps, image_1)
+
+    diff = norm(image_1 - image_2)
+
+    if viz:
+        print(f'image distance after morphing = {diff}')
+        image_1 = draw_points_on_image(image_1, sp_1)
+        image_2 = draw_points_on_image(image_2, sp_2)
+        show_images([image_1, image_2])
+        pass
+
+    return diff, np.sum(match_costs)
+
+
+def run_contour_sc_distance_with_morph_multiloop(image_1, image_2, viz=True, k=3):
+    # image 1 and 2 are binary images.
+    contour_1, _ = get_contours(image_1)
+    sp_1 = sample_points_from_contour(contour_1)
+
+    contour_2, _ = get_contours(image_2)
+    sp_2 = sample_points_from_contour(contour_2)
+
+    desc1_inliers_idxs = np.arange(0, sp_1.shape[0])
+    desc2_inliers_idxs = np.arange(0, sp_2.shape[0])
+
+    for i in range(0, k):
+        descs_1, med_dist_1 = get_sc(sp_1[desc1_inliers_idxs])
+        descs_2, med_dist_2 = get_sc(sp_2[desc2_inliers_idxs])
+
+        matches, desc1_inliers_idxs, desc2_inliers_idxs, match_costs, cost_mat, desc1, desc2\
+            = calculate_correspondence_for_manual_viz(descs_1, descs_2)
+        if viz:
+            show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
+            # draw_matches_for_manual_viz(image_1, image_2, sp_1, sp_2, matches, match_costs, inlier_idxs, cost_mat, desc1, desc2)
+            print(f'total match costs = {np.sum(match_costs)}')
+
+        # Morph once.......
+        reg_scale = 1e4 if k == 0 else med_dist_1 ** 2
+        # sp_1, tps = morph_pure_tps(matches, sp_1, sp_2, reg_scale=med_dist_1**2)\
+        sp_1, tps = morph(matches, sp_1, sp_2, reg_scale=reg_scale)
+        image_1 = morph_image(tps, image_1)
+
     diff = norm(image_1 - image_2)
 
     if viz:
@@ -237,35 +251,6 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
         pass
 
     return diff
-
-
-def run_sc_distance_with_morph_with_homography(image_1, image_2, k=1, n_clusters=20):
-    # image 1 and 2 are binary images.
-    sp_1 = sample_points_using_clustering(image_1, n_clusters=n_clusters)
-    descs_1, _ = get_sc(sp_1)
-
-    sp_2 = sample_points_using_clustering(image_2, n_clusters=n_clusters)
-    descs_2, _ = get_sc(sp_2)
-
-    matches, inlier_idxs, match_costs = calculate_correspondence(descs_1, descs_2)
-    total_cost_first_time = np.sum(match_costs[inlier_idxs])
-
-    show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches[inlier_idxs]))
-
-    total_cost_after_final_morph = total_cost_first_time
-    # Perform morphing k times.....
-    for i in range(0, k):
-        image_1 = morph_homo(matches, sp_1, sp_2, image_1)
-        sp_1 = sample_points_using_clustering(image_1, n_clusters=n_clusters)
-        descs_1, _ = get_sc(sp_1)
-
-        matches, inlier_idxs, match_costs = calculate_correspondence(descs_1, descs_2)
-        total_cost_after_final_morph = np.sum(match_costs[inlier_idxs])
-
-        show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
-
-    print(f'first time cost = {total_cost_first_time}')
-    print(f'{k}th time cost = {total_cost_after_final_morph}')
 
 
 def builtin_shape_context_dist_experiment():
@@ -294,11 +279,11 @@ def run_batch_scoring_experiments(images, labels):
         for j, nm_img in enumerate(tgt_non_match_images):
             # print(i,j)
             nm_img = threshold_image(nm_img)
-            tgt_match_dist = run_contour_sc_distance_with_morph(m_img, img_of_4, viz=False)
-            other_match_dist = run_contour_sc_distance_with_morph(nm_img, img_of_4, viz=False)
+            tgt_match_dist, tgt_m_cost = run_contour_sc_distance_with_morph(m_img, img_of_4, viz=False)
+            other_match_dist, other_m_cost = run_contour_sc_distance_with_morph(nm_img, img_of_4, viz=False)
             tgt_match_dist_simple = norm(img_of_4 - m_img)
             other_match_dist_match_dist_simple = norm(img_of_4 - nm_img)
-            if tgt_match_dist < other_match_dist:
+            if tgt_m_cost < other_m_cost:
                 sc_match_count += 1
             if tgt_match_dist_simple < other_match_dist_match_dist_simple:
                 trivial_match_count += 1
