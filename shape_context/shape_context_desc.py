@@ -17,15 +17,30 @@ def calculate_correspondence(desc1, desc2, max_rank=20):
     return matches, inlier_idxs, match_costs
 
 
-def calculate_correspondence_for_manual_viz(desc1, desc2, max_rank=20):
+def calculate_correspondence_for_manual_viz(desc1, desc2):
+    n1, _ = desc1.shape
+    n2, _ = desc2.shape
+    eps = 0.15  # Taken from the reference matlab implementation
+
+    # Pad the cost matrix.
+    cost_mat_size = max(n1, n2)
+    cost_mat_padded = np.ones([cost_mat_size, cost_mat_size]) * eps
     cost_mat = compute_cost_matrix(desc1, desc2)
-    row_ind, col_ind = linear_sum_assignment(cost_mat)
-    match_costs = np.array([cost_mat[row_ind[i]][col_ind[i]] for i in range(0, row_ind.shape[0])])
-    cost_limit = np.max(np.partition(match_costs, max_rank)[:max_rank]) if match_costs.shape[0] > max_rank else np.max(
-        match_costs)
-    inlier_idxs = np.where(match_costs <= cost_limit)
-    matches = np.vstack((row_ind, col_ind)).transpose()
-    return matches, inlier_idxs, match_costs, cost_mat, desc1, desc2
+    cost_mat_padded[0:n1, 0:n2] = cost_mat
+
+    # Perform matching.
+    row_idxs, col_idxs = linear_sum_assignment(cost_mat_padded)
+
+    # Points in desc1 that matched to one of the entries in desc2
+    desc1_inliers_idxs = np.where(col_idxs[row_idxs[:n1]] < n2)
+    # Points in desc2 that matched to one of the entries in desc1
+    d2_idxs = np.argsort(col_idxs)[:n2]
+    desc2_inliers_idxs = np.where(row_idxs[d2_idxs] < n1)
+
+    matches = np.vstack((row_idxs, col_idxs)).transpose()[:n1]
+    matches = matches[np.where(matches[:, 1] < n2)]
+    match_costs = np.array([cost_mat_padded[matches[i][0]][matches[i][1]] for i in range(0, min(n1, n2))])
+    return matches, desc1_inliers_idxs, desc2_inliers_idxs, match_costs, cost_mat, desc1, desc2
 
 
 def compute_cost_matrix(desc1, desc2):

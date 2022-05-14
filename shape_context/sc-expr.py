@@ -218,16 +218,15 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
     descs_2, med_dist_2 = get_sc(sp_2)
 
     # matches, inlier_idxs, match_costs = calculate_correspondence(descs_1, descs_2, max_rank=400)
-    matches, inlier_idxs, match_costs, cost_mat, desc1, desc2 = calculate_correspondence_for_manual_viz(descs_1,
-                                                                                                        descs_2,
-                                                                                                        max_rank=400)
+    matches, desc1_inliers_idxs, desc2_inliers_idxs, match_costs, cost_mat, desc1, desc2\
+        = calculate_correspondence_for_manual_viz(descs_1, descs_2)
     if viz:
-        show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches[inlier_idxs]))
+        show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
         # draw_matches_for_manual_viz(image_1, image_2, sp_1, sp_2, matches, match_costs, inlier_idxs, cost_mat, desc1, desc2)
-        print(f'total match costs = {np.sum(match_costs[inlier_idxs])}')
+        print(f'total match costs = {np.sum(match_costs)}')
 
     # Morph once.......
-    image_1, sp_1 = morph_pure_tps(matches[inlier_idxs], sp_1, sp_2, image_1, reg_scale=med_dist_1**2)
+    image_1, sp_1 = morph_pure_tps(matches, sp_1, sp_2, image_1, reg_scale=med_dist_1**2)
     diff = norm(image_1 - image_2)
 
     if viz:
