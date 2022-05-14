@@ -123,16 +123,6 @@ def morph_homo(point_matches, pts_1, pts_2, img_1):
     return threshold_image(cv2.warpPerspective(img_1, mat, img_1.shape), 80)
 
 
-def morph_points(point_matches, pts_1, pts_2, img_1):
-    n, _ = point_matches.shape
-    matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]]).reshape([-1, 2])
-    interp = RBF(pts_1[:n, :], matched_pts, smoothing=0.01)
-    x_points, y_points = np.where(img_1 >= 255)
-    points = np.vstack((x_points, y_points)).transpose().astype(np.uint8)
-    new_points = np.round(interp(points)).astype(np.uint8)
-    return new_points
-
-
 def sample_points_using_clustering(image, n_clusters=10):
     x_points, y_points = np.where(image >= 90)
     points = np.vstack((x_points, y_points)).transpose().astype(np.uint16)
@@ -191,8 +181,8 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
     matches, desc1_inliers_idxs, desc2_inliers_idxs, match_costs, cost_mat, desc1, desc2\
         = calculate_correspondence_for_manual_viz(descs_1, descs_2)
     if viz:
-        show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
-        # draw_matches_for_manual_viz(image_1, image_2, sp_1, sp_2, matches, match_costs, inlier_idxs, cost_mat, desc1, desc2)
+        #show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
+        draw_matches_for_manual_viz(image_1, image_2, sp_1, sp_2, matches, match_costs, cost_mat, desc1, desc2)
         print(f'total match costs = {np.sum(match_costs)}')
 
     # Morph once.......
@@ -232,7 +222,7 @@ def run_contour_sc_distance_with_morph_multiloop(image_1, image_2, viz=True, k=3
             = calculate_correspondence_for_manual_viz(descs_1, descs_2)
         if viz:
             show_image(draw_matches(image_1, image_2, sp_1, sp_2, matches))
-            # draw_matches_for_manual_viz(image_1, image_2, sp_1, sp_2, matches, match_costs, inlier_idxs, cost_mat, desc1, desc2)
+            # draw_matches_for_manual_viz(image_1, image_2, sp_1, sp_2, matches, match_costs, cost_mat, desc1, desc2)
             print(f'total match costs = {np.sum(match_costs)}')
 
         # Morph once.......

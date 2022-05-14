@@ -66,7 +66,7 @@ def draw_matches(img_1, img_2, points_1, points_2, matches):
     return img_3
 
 
-def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs, inlier_idxs, cost_mat, desc1, desc2):
+def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs, cost_mat, desc1, desc2):
     def invert(tup):
         return tup[1], tup[0]
 
@@ -112,6 +112,7 @@ def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs
     green_color = (0, 255, 0)
     cyan_color = (255, 255, 0)
     magenta_color = (255, 0, 255)
+    pink_color = (203, 192, 255)
 
     assert img_1.shape == img_2.shape
     scale = 5
@@ -125,18 +126,22 @@ def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs
     points_1 = np.round(points_1) * scale
     points_2 = (np.round(points_2) + [0, w]) * scale  # offset to account for a concatenated image
 
-    # Bounding box scaling and nn matching.
+    # Calculate and draw first bounding box
     top_left, bottom_right = find_bbox(points_1)
     cv2.rectangle(img_3, invert(top_left), invert(bottom_right), green_color, thickness)
     scaled_pts_1 = scale_to_bbox((top_left, bottom_right), points_1)
+
+    # Calculate and draw second bounding box
     top_left, bottom_right = find_bbox(points_2)
     cv2.rectangle(img_3, invert(top_left), invert(bottom_right), green_color, thickness)
     scaled_pts_2 = scale_to_bbox((top_left, bottom_right), points_2)
+
+    # Nearest neighbor matching
     nn_idxs = get_nns(scaled_pts_1, scaled_pts_2)
     points_1_nn = points_2[nn_idxs]
     nn_descs = desc2[nn_idxs]
 
-    # Draw bounding boxes.
+    # Draw points.
     for point in points_1:
         y, x = point
         cv2.rectangle(img_3, (x - 2, y - 2), (x + 2, y + 2), blue_color, thickness)
@@ -150,8 +155,13 @@ def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs
 
         img_match = np.copy(img_3)
 
-        # Draw actual match
+        # Draw actual match a
         cv2.line(img_match, (x1, y1), (x2, y2), red_color, thickness)
+
+        # Draw local windows
+        win_rad = 12  # local window radius
+        cv2.rectangle(img_match, (x1 - win_rad, y1 - win_rad), (x1 + win_rad, y1 + win_rad), pink_color, thickness)
+        cv2.rectangle(img_match, (x2 - win_rad, y2 - win_rad), (x2 + win_rad, y2 + win_rad), pink_color, thickness)
 
         top_3_idx = np.argsort(cost_mat[m1])[:3]
 
