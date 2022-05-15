@@ -180,7 +180,7 @@ def run_contour_sc_distance_with_morph(image_1, image_2, viz=True):
     descs_2, med_dist_2 = get_sc(sp_2)
 
     matches, desc1_inliers_idxs, desc2_inliers_idxs, match_costs, cost_mat, hauss_eq_cost, desc1, desc2\
-        = calculate_correspondence_for_manual_viz(descs_1, descs_2)
+        = calculate_correspondence_for_manual_viz(descs_1, descs_2, sp_1, sp_2, image_1, image_2)
     if viz:
         show_image(draw_matches(to_color(image_1), to_color(image_2), sp_1, sp_2, matches))
         # draw_matches_for_manual_viz(to_color(image_1), to_color(image_2), sp_1, sp_2, matches, match_costs, cost_mat, desc1, desc2)

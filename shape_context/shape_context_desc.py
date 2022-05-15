@@ -4,7 +4,7 @@ import numpy as np
 from numpy import arctan2, histogram2d
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import pdist, squareform
-
+from numpy.linalg import norm
 
 def calculate_correspondence(desc1, desc2, max_rank=20):
     cost_mat = compute_cost_matrix(desc1, desc2)
@@ -17,15 +17,19 @@ def calculate_correspondence(desc1, desc2, max_rank=20):
     return matches, inlier_idxs, match_costs
 
 
-def calculate_correspondence_for_manual_viz(desc1, desc2):
+def calculate_correspondence_for_manual_viz(desc1, desc2, sample_pts_1, sample_pts_2, image_1, image_2):
     n1, _ = desc1.shape
     n2, _ = desc2.shape
     eps = 0.15  # Taken from the reference matlab implementation
+    alpha = 0.7
+
+    local_win_cost_mat = calculate_pairwise_local_window_dist(sample_pts_1, sample_pts_2, image_1, image_2)
+    desc_cost_mat = compute_cost_matrix(desc1, desc2)
+    cost_mat = alpha * desc_cost_mat + (1 - alpha) * local_win_cost_mat
 
     # Pad the cost matrix.
     cost_mat_size = max(n1, n2)
     cost_mat_padded = np.ones([cost_mat_size, cost_mat_size]) * eps
-    cost_mat = compute_cost_matrix(desc1, desc2)
     cost_mat_padded[0:n1, 0:n2] = cost_mat
 
     # Perform matching.
@@ -47,6 +51,33 @@ def calculate_correspondence_for_manual_viz(desc1, desc2):
 def calculate_hausdorff_eq_cost(cost_matrix):
     # Calculate shape context matching cost based on MATLAB reference implementation.
     return max(np.mean(np.min(cost_matrix, axis=0)), np.mean(np.min(cost_matrix, axis=1)))
+
+
+def calculate_pairwise_local_window_dist(sample_pts_1, sample_pts_2, image_1, image_2):
+    win_rad = 2
+    h, w = image_1.shape
+    # pad images
+    pad_img_1 = np.zeros([h + win_rad, w + win_rad], dtype=np.uint8)
+    pad_img_1[win_rad:win_rad + h, win_rad:win_rad + w] = image_1
+    pad_img_2 = np.zeros([h + win_rad, w + win_rad], dtype=np.uint8)
+    pad_img_2[win_rad:win_rad + h, win_rad:win_rad + w] = image_2
+
+    # pad sample points
+    sample_pts_1 = sample_pts_1 + [win_rad, win_rad]
+    sample_pts_2 = sample_pts_2 + [win_rad, win_rad]
+
+    distances = []
+    for sample_1 in sample_pts_1:
+        sample_dists = []
+        x1, y1 = sample_1
+        for sample_2 in sample_pts_2:
+            x2, y2 = sample_2
+            win_1 = pad_img_1[x1 - win_rad: x1 + win_rad, y1 - win_rad: y1 + win_rad]
+            win_2 = pad_img_1[x2 - win_rad: x2 + win_rad, y2 - win_rad: y2 + win_rad]
+            sample_dists.append(norm(win_1 - win_2))
+        total_dist = np.sum(sample_dists)
+        distances.append(np.array(sample_dists) / total_dist + 0.01)
+    return np.array(distances)
 
 
 def compute_cost_matrix(desc1, desc2):
