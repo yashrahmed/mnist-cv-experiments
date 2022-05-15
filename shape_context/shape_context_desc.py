@@ -2,9 +2,10 @@ from math import pi
 
 import numpy as np
 from numpy import arctan2, histogram2d
+from numpy.linalg import norm
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import pdist, squareform
-from numpy.linalg import norm
+
 
 def calculate_correspondence(desc1, desc2, max_rank=20):
     cost_mat = compute_cost_matrix(desc1, desc2)
@@ -57,9 +58,9 @@ def calculate_pairwise_local_window_dist(sample_pts_1, sample_pts_2, image_1, im
     win_rad = 2
     h, w = image_1.shape
     # pad images
-    pad_img_1 = np.zeros([h + win_rad, w + win_rad], dtype=np.uint8)
+    pad_img_1 = np.zeros([h + 2 * win_rad, w + 2 * win_rad], dtype=np.uint8)
     pad_img_1[win_rad:win_rad + h, win_rad:win_rad + w] = image_1
-    pad_img_2 = np.zeros([h + win_rad, w + win_rad], dtype=np.uint8)
+    pad_img_2 = np.zeros([h + 2 * win_rad, w + 2 * win_rad], dtype=np.uint8)
     pad_img_2[win_rad:win_rad + h, win_rad:win_rad + w] = image_2
 
     # pad sample points
