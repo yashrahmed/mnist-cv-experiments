@@ -7,7 +7,7 @@ from tps import ThinPlateSpline
 
 from common.dataset_utils import load_actual_mnist
 from common.img_utils import draw_matches, draw_points_on_image, draw_matches_for_manual_viz, show_image, show_images, \
-    to_color
+    to_color, draw_contours_on_image
 from common.plot_utils import scatter_plot
 from shape_context_desc import compute_descriptor as get_sc, calculate_correspondence, \
     calculate_correspondence_for_manual_viz
@@ -246,17 +246,52 @@ def run_contour_sc_distance_with_morph_multiloop(image_1, image_2, viz=True, k=3
     return diff
 
 
+def calc_builtin_shape_context_distance(image_1, image_2):
+    contour_1, _ = get_contours(image_1)
+    contour_1 = sample_points_from_contour(contour_1).reshape([-1, 1, 2])
+
+    contour_2, _ = get_contours(image_2)
+    contour_2 = sample_points_from_contour(contour_2).reshape([-1, 1, 2])
+
+    dist_extractor = cv2.createShapeContextDistanceExtractor()
+    return dist_extractor.computeDistance(contour_1, contour_2)
+
+
 def builtin_shape_context_dist_experiment():
     # Fails to run. Exit code 139 with SIGSEGV (Seg fault)
     control_4_corners, control_4_corners_2, control_diamond = create_control_shapes()
 
-    sp_c = sample_points_using_clustering(control_4_corners, n_clusters=4)
-    sp_c2 = sample_points_using_clustering(control_4_corners_2, n_clusters=4)
-    sp_d = sample_points_using_clustering(control_diamond, n_clusters=4)
+    control_4_corners = cv2.resize(control_4_corners, [56,56])
+    control_4_corners_2 = cv2.resize(control_4_corners_2, [56, 56])
+    control_diamond = cv2.resize(control_diamond, [56, 56]) # Resizing required for control_diamond image to work.
 
-    dist_extractor = cv2.ShapeContextDistanceExtractor()
-    print(
-        f'dist b/w corner shapes = {dist_extractor.computeDistance(sp_c.reshape([4, 1, 2]), sp_c2.reshape([4, 1, 2]))}')
+    contour_4c, _ = get_contours(control_4_corners)
+    contour_4c2, _ = get_contours(control_4_corners_2)
+    contour_d, _ = get_contours(control_diamond)
+
+    contour_4c = sample_points_from_contour(contour_4c).reshape([-1, 1, 2])
+    contour_4c2 = sample_points_from_contour(contour_4c2).reshape([-1, 1, 2])
+    contour_d = sample_points_from_contour(contour_d).reshape([-1, 1, 2])
+
+    dist_extractor = cv2.createShapeContextDistanceExtractor()
+    print(f'SC dist b/w corner shapes = {dist_extractor.computeDistance(contour_4c, contour_4c2)}')
+    print(f'SC dist b/w corner shapes = {dist_extractor.computeDistance(contour_4c, contour_d)}')
+
+
+def builtin_haussdorf_dist_experiment():
+    # Fails to run. Exit code 139 with SIGSEGV (Seg fault)
+    control_4_corners, control_4_corners_2, control_diamond = create_control_shapes()
+
+    contour_4c, _ = get_contours(control_4_corners)
+    contour_4c2, _ = get_contours(control_4_corners_2)
+    contour_d, _ = get_contours(control_diamond)
+    contour_4c = sample_points_from_contour(contour_4c).reshape([-1, 1, 2])
+    contour_4c2 = sample_points_from_contour(contour_4c2).reshape([-1, 1, 2])
+    contour_d = sample_points_from_contour(contour_d).reshape([-1, 1, 2])
+
+    dist_extractor = cv2.createHausdorffDistanceExtractor()
+    print(f'Hauss dist b/w corner shapes = {dist_extractor.computeDistance(contour_4c, contour_4c2)}')
+    print(f'Hauss dist b/w corner shapes = {dist_extractor.computeDistance(contour_4c, contour_d)}')
 
 
 def run_batch_scoring_experiments(images, labels):
@@ -270,13 +305,15 @@ def run_batch_scoring_experiments(images, labels):
     for i, m_img in enumerate(tgt_match_images):
         m_img = threshold_image(m_img)
         for j, nm_img in enumerate(tgt_non_match_images):
-            # print(i,j)
+            print(i, j)
             nm_img = threshold_image(nm_img)
-            tgt_match_dist, _, tgt_hauss_cost = run_contour_sc_distance_with_morph(m_img, img_of_4, viz=False)
-            other_match_dist, _, other_match_cost = run_contour_sc_distance_with_morph(nm_img, img_of_4, viz=False)
+            # tgt_match_dist, _, tgt_hauss_cost = run_contour_sc_distance_with_morph(m_img, img_of_4, viz=False)
+            # other_match_dist, _, other_match_cost = run_contour_sc_distance_with_morph(nm_img, img_of_4, viz=False)
+            tgt_sc_cost = calc_builtin_shape_context_distance(m_img, image_of_4)
+            other_sc_cost = calc_builtin_shape_context_distance(nm_img, image_of_4)
             tgt_match_dist_simple = norm(img_of_4 - m_img)
             other_match_dist_match_dist_simple = norm(img_of_4 - nm_img)
-            if tgt_hauss_cost < other_match_cost:
+            if tgt_sc_cost < other_sc_cost:
                 sc_match_count += 1
             if tgt_match_dist_simple < other_match_dist_match_dist_simple:
                 trivial_match_count += 1
@@ -290,10 +327,14 @@ def run_batch_scoring_experiments(images, labels):
 if __name__ == '__main__':
     train_images, train_labels, _, _ = load_actual_mnist()
     image_of_4 = threshold_image(train_images[train_labels == 4][314])
-
-    # run_batch_scoring_experiments(train_images, train_labels)
-
     image_of_42 = threshold_image(train_images[train_labels == 4][9])
-    image_of_5 = threshold_image(train_images[train_labels == 5][8])
-    run_contour_sc_distance_with_morph(image_of_42, image_of_4)
-    run_contour_sc_distance_with_morph(image_of_5, image_of_4)
+    image_of_5 = threshold_image(train_images[train_labels == 6][8])
+
+    # builtin_haussdorf_dist_experiment()
+    # builtin_shape_context_dist_experiment()
+    run_batch_scoring_experiments(train_images, train_labels)
+    #
+    # print(calc_builtin_shape_context_distance(image_of_42, image_of_4))
+    # print(calc_builtin_shape_context_distance(image_of_5, image_of_4))
+    # run_contour_sc_distance_with_morph(image_of_42, image_of_4)
+    # run_contour_sc_distance_with_morph(image_of_5, image_of_4)
