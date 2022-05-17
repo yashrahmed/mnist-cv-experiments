@@ -5,16 +5,14 @@ from scipy.interpolate import RBFInterpolator as RBF
 from sklearn.cluster import AgglomerativeClustering
 from tps import ThinPlateSpline
 
+from common.contour_utils import get_contours, sample_points_from_contour
 from common.dataset_utils import load_actual_mnist
 from common.img_utils import draw_matches, draw_points_on_image, draw_matches_for_manual_viz, show_image, show_images, \
     to_color, draw_contours_on_image
 from common.plot_utils import scatter_plot
+from haussdorff_dist.distance import compute_hauss_dist
 from shape_context_desc import compute_descriptor as get_sc, calculate_correspondence, \
     calculate_correspondence_for_manual_viz
-
-
-def swap_cols(x):
-    return np.array(x[:, [1, 0]])
 
 
 def create_control_shapes():
@@ -60,11 +58,6 @@ def run_clustering_based_sampling_on_image(image, n_clusters=10, title='title'):
     return plt
 
 
-def get_contours(bin_image):
-    contours, hierarchy = cv2.findContours(bin_image, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
-    return contours, hierarchy
-
-
 def get_polygon(contour):
     epsilon = 0.01 * cv2.arcLength(contour, True)
     return cv2.approxPolyDP(contour, epsilon, True)
@@ -103,27 +96,6 @@ def morph_image(txfm_func, image):
     return out_img
 
 
-def morph_affine(point_matches, pts_1, pts_2, img_1):
-    pts_1 = swap_cols(pts_1)
-    pts_2 = swap_cols(pts_2)
-    n, _ = point_matches.shape
-    matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]])
-    mat, mask = cv2.estimateAffine2D(pts_1[:n, :], matched_pts, method=cv2.RANSAC, ransacReprojThreshold=3)
-    new_img = threshold_image(cv2.warpAffine(img_1, mat, img_1.shape), 70)
-    # swap to bring back to numpy axes convention.
-    new_pts = swap_cols(np.reshape(cv2.transform(pts_1.reshape([-1, 1, 2]), mat), [-1, 2]))
-    return new_img, new_pts
-
-
-def morph_homo(point_matches, pts_1, pts_2, img_1):
-    pts_1 = swap_cols(pts_1)
-    pts_2 = swap_cols(pts_2)
-    n, _ = point_matches.shape
-    matched_pts = np.array([pts_2[i, :] for i in point_matches[:n, 1]])
-    mat, mask = cv2.findHomography(pts_1[:n, :], matched_pts, cv2.RANSAC, 6)
-    return threshold_image(cv2.warpPerspective(img_1, mat, img_1.shape), 80)
-
-
 def sample_points_using_clustering(image, n_clusters=10):
     x_points, y_points = np.where(image >= 90)
     points = np.vstack((x_points, y_points)).transpose().astype(np.uint16)
@@ -134,11 +106,6 @@ def sample_points_using_clustering(image, n_clusters=10):
     unique_labels = np.unique(agg.labels_)
     sampled_points = np.array([np.mean(points[agg.labels_ == label], axis=0) for label in unique_labels])
     return sampled_points
-
-
-def sample_points_from_contour(contours):
-    # Assumes that the input is a simplified contour.
-    return swap_cols(np.unique(np.vstack(contours).astype(np.uint16).reshape([-1, 2]), axis=0))
 
 
 def run_on_control_images_expr():
@@ -285,13 +252,22 @@ def builtin_haussdorf_dist_experiment():
     contour_4c, _ = get_contours(control_4_corners)
     contour_4c2, _ = get_contours(control_4_corners_2)
     contour_d, _ = get_contours(control_diamond)
-    contour_4c = sample_points_from_contour(contour_4c).reshape([-1, 1, 2])
-    contour_4c2 = sample_points_from_contour(contour_4c2).reshape([-1, 1, 2])
-    contour_d = sample_points_from_contour(contour_d).reshape([-1, 1, 2])
+
+    contour_4c = sample_points_from_contour(contour_4c)
+    contour_4c2 = sample_points_from_contour(contour_4c2)
+    contour_d = sample_points_from_contour(contour_d)
+
+    contour_4c_folded = contour_4c.reshape([-1, 1, 2])
+    contour_4c2_folded = contour_4c2.reshape([-1, 1, 2])
+    contour_d_folded = contour_d.reshape([-1, 1, 2])
 
     dist_extractor = cv2.createHausdorffDistanceExtractor()
-    print(f'Hauss dist b/w corner shapes = {dist_extractor.computeDistance(contour_4c, contour_4c2)}')
-    print(f'Hauss dist b/w corner shapes = {dist_extractor.computeDistance(contour_4c, contour_d)}')
+
+    print(f'Built in Hauss dist b/w corner shapes = {dist_extractor.computeDistance(contour_4c_folded, contour_4c2_folded)}')
+    print(f'Built in Hauss dist b/w corner shapes = {dist_extractor.computeDistance(contour_4c_folded, contour_d_folded)}')
+
+    print(f'Custom Hauss dist b/w corner shapes = {compute_hauss_dist(contour_4c, contour_4c2)}')
+    print(f'Custom Hauss dist b/w corner shapes = {compute_hauss_dist(contour_4c, contour_d)}')
 
 
 def run_batch_scoring_experiments(images, labels):
@@ -330,9 +306,9 @@ if __name__ == '__main__':
     image_of_42 = threshold_image(train_images[train_labels == 4][9])
     image_of_5 = threshold_image(train_images[train_labels == 6][8])
 
-    # builtin_haussdorf_dist_experiment()
+    builtin_haussdorf_dist_experiment()
     # builtin_shape_context_dist_experiment()
-    run_batch_scoring_experiments(train_images, train_labels)
+    # run_batch_scoring_experiments(train_images, train_labels)
     #
     # print(calc_builtin_shape_context_distance(image_of_42, image_of_4))
     # print(calc_builtin_shape_context_distance(image_of_5, image_of_4))
