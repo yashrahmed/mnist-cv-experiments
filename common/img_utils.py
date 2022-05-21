@@ -35,15 +35,17 @@ def draw_brief_features_on_image(image, coords, resize_value=(56, 56)):
     assert len(image.shape) == 3  # Ensure that the input is a 3 channel image.
     red_color = (0, 0, 255)
     green_color = (0, 255, 0)
+    cyan_color = (255, 10, 0)
     thickness = 1
     alpha = 0.5
     image = cv2.resize(image, resize_value)
     overlay = image.copy()
     for coord in coords:
-        x1, y1, x2, y2 = coord
+        # Swap columns to reflect OpenCV conventions.
+        y1, x1, y2, x2 = coord
         cv2.line(overlay, (x1, y1), (x2, y2), green_color, thickness)
         cv2.rectangle(overlay, (x1, y1), (x1 + 1, y1 + 1), red_color, thickness)
-        cv2.rectangle(overlay, (x2, y2), (x2 + 1, y2 + 1), red_color, thickness)
+        cv2.rectangle(overlay, (x2, y2), (x2 + 1, y2 + 1), cyan_color, thickness)
     return cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0)
 
 
