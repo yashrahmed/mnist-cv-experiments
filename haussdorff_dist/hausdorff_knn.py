@@ -52,33 +52,8 @@ def threshold_image(image, th=70):
 if __name__ == '__main__':
     train_images, train_labels, test_images, test_labels = load_actual_mnist()
 
-    n_train = 5000
-    n_test = 500
-    #
-    # # 0 18 == 7 6
-    # img = extract_bbox_region(threshold_image(test_images[1]))
-    # contours1 = get_contours(img)[0]
-    # image = to_color(img)
-    # draw_contours_on_image(image, contours1)
-    #
-    # img2 = extract_bbox_region(threshold_image(train_images[0]))
-    # contours2 = get_contours(img2)[0]
-    # image2 = to_color(img2)
-    # draw_contours_on_image(image2, contours1)
-    # draw_contours_on_image(image2, contours2)
-    #
-    # dist_extractor = cv2.createHausdorffDistanceExtractor()
-    #
-    # d = dist_extractor.computeDistance(sample_points_from_contour(contours1).reshape([-1, 1, 2]), sample_points_from_contour(contours2).reshape([-1, 1, 2]))
-    # d2 = compute_hauss_dist(sample_points_from_contour(contours1), sample_points_from_contour(contours2))
-    # print(d)
-    # print(d2)
-    #
-    # show_images([image, image2])
-
-    #
-    # train_images = train_images[0:n_train].reshape([-1, 28 * 28])
-    # test_images = test_images[0:n_test].reshape([-1, 28 * 28])
+    n_train = train_labels.shape[0]
+    n_test = test_labels.shape[0]
 
     aligned_train_images = np.array([img for img in train_images[0:n_train]])
     aligned_test_images = np.array([img for img in test_images[0:n_test]])
