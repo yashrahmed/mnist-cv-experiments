@@ -6,28 +6,15 @@ from sklearn.neighbors import KNeighborsClassifier
 from bbox_extraction.extractor import extract_bbox_region
 from common.contour_utils import get_contours, sample_points_from_contour
 from common.dataset_utils import load_actual_mnist
-
-from common.img_utils import show_images, draw_contours_on_image, to_color
 from haussdorff_dist.distance import compute_hauss_dist
 
-from numpy.linalg import norm
 
-
-def compute_cost_matrix(contours_1, contours_2):
-    cost_mat = []
-    # dist_extractor = cv2.createHausdorffDistanceExtractor()
-    for i, c_1 in enumerate(contours_1):
-        cost_mat_row = []
-        for j, c_2 in enumerate(contours_2):
-            d = compute_hauss_dist(c_1, c_2, ratio=0.2)
-            # d = norm(aligned_test_images[i] - aligned_train_images[j])
-            # d = norm(test_images[i] - train_images[j])
-            # d = dist_extractor.computeDistance(c_1, c_2)
-
-            cost_mat_row.append(d)
-            # cost_mat_row.append(norm(im_1 - im_2))
-        cost_mat.append(cost_mat_row)
-    return np.array(cost_mat)
+def img_haussdorff_distance(im_side, ratio=0.2):
+    def calculate(img_1, img_2):
+        contour_1 = pre_process(img_1.reshape([im_side, im_side]))
+        contour_2 = pre_process(img_2.reshape([im_side, im_side]))
+        return compute_hauss_dist(contour_1, contour_2, ratio=ratio)
+    return calculate
 
 
 def pre_process(img):
@@ -35,22 +22,18 @@ def pre_process(img):
     return sample_points_from_contour(get_contours(proc_img)[0])
 
 
-def pre_process_non_align(img):
-    proc_img = threshold_image(img)
-    return sample_points_from_contour(get_contours(proc_img)[0])
-
-
-def pre_process_tmp(img):
+def pre_process_bbox(img):
     proc_img = extract_bbox_region(threshold_image(img))
     return proc_img
 
 
-def run_knn(train_cost_mat, train_label, test_cost_mat, test_label, neighbors=3, weights='distance'):
-    knn = KNeighborsClassifier(n_neighbors=neighbors, metric='precomputed', weights=weights, algorithm='auto')
-    knn.fit(train_cost_mat, train_label)
-    pred_labels = knn.predict(test_cost_mat)
+def run_knn(train_data, train_label, test_data, test_label, neighbors=3, weights='distance', label='N/A'):
+    knn = KNeighborsClassifier(n_neighbors=neighbors, metric=img_haussdorff_distance(im_side=32, ratio=0.25),
+                               weights=weights, algorithm='auto')
+    knn.fit(train_data, train_label)
+    pred_labels = knn.predict(test_data)
     score = accuracy_score(test_label, pred_labels) * 100
-    print(f'N={neighbors},score={score}%')
+    print(f'label={label}, N={neighbors}, score={score}%')
 
 
 def threshold_image(image, th=70):
@@ -84,9 +67,11 @@ if __name__ == '__main__':
     #
     # show_images([image, image2])
 
-    aligned_train_data = [pre_process(img) for img in train_images[0:n_train]]
-    aligned_test_data = [pre_process(img) for img in test_images[0:n_test]]
+    #
+    # train_images = train_images[0:n_train].reshape([-1, 28 * 28])
+    # test_images = test_images[0:n_test].reshape([-1, 28 * 28])
 
-    test_cost_matrix = compute_cost_matrix(aligned_test_data, aligned_train_data)
+    train_images = np.array([pre_process_bbox(img) for img in train_images[0:n_train]]).reshape([-1, 32 * 32])
+    test_images = np.array([pre_process_bbox(img) for img in test_images[0:n_test]]).reshape([-1, 32 * 32])
 
-    run_knn(np.zeros([3, 3]), train_labels[0:n_train], test_cost_matrix, test_labels[0:n_test])
+    run_knn(train_images, train_labels[0:n_train], test_images, test_labels[0:n_test], label='Aligned_Haussdorff')
