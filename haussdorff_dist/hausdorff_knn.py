@@ -31,7 +31,7 @@ def img_haussdorff_distance_cached(train_contours, test_contours, ratio=0.2):
     return calculate
 
 
-def img_sc2_distance_cached(train_contours, test_contours, ratio=0.2):
+def img_sc2_distance_cached(train_contours, test_contours):
     extractor = cv2.createShapeContextDistanceExtractor()
 
     # requires contours in opencv format [N, 1, 2]
