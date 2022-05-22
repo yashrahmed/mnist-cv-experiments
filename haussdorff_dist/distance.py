@@ -1,5 +1,6 @@
 import numpy as np
 from numpy.linalg import norm
+from scipy.spatial.distance import directed_hausdorff
 
 
 def compute_hauss_dist(pts_1, pts_2, ratio=0.6):
@@ -13,8 +14,8 @@ def compute_hauss_dist(pts_1, pts_2, ratio=0.6):
     p2_kth_eq_count = int(ratio * (r2 - 1))
 
     # Reshape for broadcasting
-    pts_1 = pts_1.astype(np.float32).reshape([r1, 1, 2])
-    pts_2 = pts_2.astype(np.float32).reshape([1, r2, 2])
+    pts_1 = pts_1.reshape([r1, 1, 2])
+    pts_2 = pts_2.reshape([1, r2, 2])
 
     dist_mat = norm(pts_1 - pts_2, axis=2)
 
