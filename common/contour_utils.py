@@ -11,6 +11,11 @@ def get_contours(bin_image, method=cv2.CHAIN_APPROX_NONE):
     return contours, hierarchy
 
 
+def get_contours_from_image(bin_image, method=cv2.CHAIN_APPROX_NONE, opencv_fmt=False, dtype=np.uint16):
+    contours = get_contours(bin_image, method)[0]
+    return sample_points_from_contour(contours, opencv_fmt, dtype)
+
+
 def sample_points_from_contour(contours, opencv_fmt=False, dtype=np.uint16):
     # Assumes that the input is a simplified contour.
     if opencv_fmt:
