@@ -1,4 +1,4 @@
-Using euclidean distance ::
+Using euclidean distance (EXTRACT mode)::
 
 Uniform weights -->
 N=2,score=96.98%
@@ -9,3 +9,16 @@ Distance weights -->
 N=2,score=97.6%
 N=3,score=97.73% ****
 N=4,score=97.71%
+
+
+Using euclidean distance (ALIGN mode)::
+
+Uniform weights -->
+N=2,score=94.93%
+N=3,score=95.71%
+N=4,score=95.78%
+
+Distance weights -->
+N=2,score=95.62%
+N=3,score=95.97%
+N=4,score=96.01%
