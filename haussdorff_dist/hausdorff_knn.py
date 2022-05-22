@@ -60,10 +60,6 @@ def run_knn(train_data, train_label, test_data, test_label, metric, neighbors=3,
     print(f'label={label}, N={neighbors}, score={score}%')
 
 
-def threshold_image(image, th=70):
-    return cv2.threshold(image, th, 255, cv2.THRESH_BINARY)[1]
-
-
 if __name__ == '__main__':
     pre_process_th = 70
     exemplar_th = 150

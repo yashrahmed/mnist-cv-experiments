@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 
+from common.img_utils import threshold_image
+
 
 def get_bbox(image):
     pts_x, pts_y = np.where(image == 255)
@@ -35,7 +37,3 @@ def extract_bbox_region(image, th=70, mode='extract'):
     else:
         raise Exception("Unsupported Bounding box operation")
     return out_img
-
-
-def threshold_image(image, th=70):
-    return cv2.threshold(image, th, 255, cv2.THRESH_BINARY)[1]

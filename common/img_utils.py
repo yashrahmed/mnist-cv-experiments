@@ -222,6 +222,10 @@ def show_images(images, disp_name='combined', scale=1):
     cv2.waitKey(0)
 
 
+def threshold_image(image, th=70):
+    return cv2.threshold(image, th, 255, cv2.THRESH_BINARY)[1]
+
+
 def to_color(image):
     ch = len(image.shape)
     return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) if ch == 2 else image
