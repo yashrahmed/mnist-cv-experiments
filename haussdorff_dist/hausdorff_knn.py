@@ -68,7 +68,7 @@ if __name__ == '__main__':
     pre_process_th = 70
     exemplar_th = 150
     n_clusters_per_label = 50
-    n_train = 5000 #n_clusters_per_label * 10
+    n_train = 5000  # n_clusters_per_label * 10
     n_test = 500
     mode = 'extract'
 
@@ -80,20 +80,22 @@ if __name__ == '__main__':
     # exemplar_train_images, exemplar_labels = generate_exemplar_dataset(aligned_train_images, train_labels,
     #                                                                    clusters_per_label=n_clusters_per_label)
     # exemplar_train_images = np.array([threshold_image(img, exemplar_th) for img in exemplar_train_images])
-    # show_images(exemplar_train_images[0:20])
 
-    train_idxs = np.array([i for i in range(1, train_labels.shape[0]+1)], dtype=np.int32)
-    test_idxs = np.array([-i for i in range(1, test_labels.shape[0]+1)], dtype=np.int32)
+    train_idxs = np.array([i for i in range(1, train_labels.shape[0] + 1)], dtype=np.int32)
+    test_idxs = np.array([-i for i in range(1, test_labels.shape[0] + 1)], dtype=np.int32)
 
-    aligned_train_images = aligned_train_images[0:n_train]
-    train_idxs = train_idxs[0:n_train]
-    train_labels = train_labels[0:n_train]
-    aligned_test_images = aligned_test_images[0:n_test]
-    test_idxs = test_idxs[0:n_test]
-    test_labels = test_labels[0:n_test]
+    # Prepare final input after preprocessing
+    input_train_images = aligned_train_images[0:n_train]
+    input_train_idxs = train_idxs[0:n_train]
+    input_train_labels = train_labels[0:n_train]
 
-    train_cache = cache_contours(aligned_train_images, train_idxs)
-    test_cache = cache_contours(aligned_test_images, test_idxs)
-    dist_metric = img_haussdorff_distance_cached(train_cache, test_cache, ratio=0.25)
-    run_knn(train_idxs.reshape([-1, 1]), train_labels, test_idxs.reshape([-1, 1]), test_labels, metric=dist_metric,
+    input_test_images = aligned_test_images[0:n_test]
+    input_test_idxs = test_idxs[0:n_test]
+    input_test_labels = test_labels[0:n_test]
+
+    train_contours_cache = cache_contours(input_train_images, input_train_idxs)
+    test_contours_cache = cache_contours(input_test_images, input_test_idxs)
+    dist_metric = img_haussdorff_distance_cached(train_contours_cache, test_contours_cache, ratio=0.25)
+    run_knn(input_train_idxs.reshape([-1, 1]), input_train_labels, input_test_idxs.reshape([-1, 1]), input_test_labels,
+            metric=dist_metric,
             label='Aligned_Haussdorff')
