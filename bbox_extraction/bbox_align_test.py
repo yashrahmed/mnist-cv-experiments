@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
 
-from bbox_extraction.extractor import extract_bbox_region
+from bbox_extraction.bbox_extractor import extract_bbox_region
 from common.dataset_utils import load_actual_mnist
 
 
