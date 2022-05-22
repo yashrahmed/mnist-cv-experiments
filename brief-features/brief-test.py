@@ -277,8 +277,9 @@ def generate_average_dataset(images, labels):
     return np.array(average_images), digits
 
 
-def run_image_averaging_experiment(images, labels):
-    avg_imgs, _ = generate_average_dataset(images, labels)
+def run_image_averaging_experiment():
+    train_images, train_labels, test_images, test_labels = load_actual_mnist()
+    avg_imgs, _ = generate_average_dataset(train_images, train_labels)
     show_images(avg_imgs)
 
 
