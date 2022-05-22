@@ -3,10 +3,11 @@ import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
 
-from bbox_extraction.extractor import extract_bbox_region
+from bbox_extraction.bbox_extractor import extract_bbox_region
 from common.contour_utils import get_contours, sample_points_from_contour
 from common.dataset_utils import load_actual_mnist
 from haussdorff_dist.distance import compute_hauss_dist
+from haussdorff_dist.mnist_exemplar import generate_exemplar_dataset
 
 
 def cache_contours(images, idxs, opencv_fmt=False):
@@ -17,7 +18,7 @@ def cache_contours(images, idxs, opencv_fmt=False):
 
 
 def find_contours(img, opencv_fmt):
-    return sample_points_from_contour(get_contours(img, cv2.CHAIN_APPROX_NONE)[0], opencv_fmt)
+    return sample_points_from_contour(get_contours(img, cv2.CHAIN_APPROX_NONE)[0], opencv_fmt, dtype=np.float32)
 
 
 def img_haussdorff_distance_cached(train_contours, test_contours, ratio=0.2):
@@ -45,8 +46,8 @@ def img_sc2_distance_cached(train_contours, test_contours):
     return calculate
 
 
-def pre_process_bbox(img):
-    return extract_bbox_region(threshold_image(img))
+def pre_process_bbox(img, th=70, mode='extract'):
+    return extract_bbox_region(img, th, mode=mode)
 
 
 def run_knn(train_data, train_label, test_data, test_label, metric, neighbors=3, weights='distance', algo='brute',
@@ -64,23 +65,35 @@ def threshold_image(image, th=70):
 
 
 if __name__ == '__main__':
+    pre_process_th = 70
+    exemplar_th = 150
+    n_clusters_per_label = 50
+    n_train = 5000 #n_clusters_per_label * 10
+    n_test = 500
+    mode = 'extract'
+
     train_images, train_labels, test_images, test_labels = load_actual_mnist()
 
-    # n_train = train_labels.shape[0]
-    # n_test = test_labels.shape[0]
+    aligned_train_images = np.array([pre_process_bbox(img, pre_process_th, mode=mode) for img in train_images])
+    aligned_test_images = np.array([pre_process_bbox(img, pre_process_th, mode=mode) for img in test_images])
 
-    n_train = 5000
-    n_test = 500
+    # exemplar_train_images, exemplar_labels = generate_exemplar_dataset(aligned_train_images, train_labels,
+    #                                                                    clusters_per_label=n_clusters_per_label)
+    # exemplar_train_images = np.array([threshold_image(img, exemplar_th) for img in exemplar_train_images])
+    # show_images(exemplar_train_images[0:20])
 
-    aligned_train_images = np.array([pre_process_bbox(img) for img in train_images[0:n_train]])
-    aligned_test_images = np.array([pre_process_bbox(img) for img in test_images[0:n_test]])
+    train_idxs = np.array([i for i in range(1, train_labels.shape[0]+1)], dtype=np.int32)
+    test_idxs = np.array([-i for i in range(1, test_labels.shape[0]+1)], dtype=np.int32)
 
-    train_idxs = np.array([i for i in range(1, n_train + 1)], dtype=np.int32)
-    test_idxs = np.array([-i for i in range(1, n_test + 1)], dtype=np.int32)
+    aligned_train_images = aligned_train_images[0:n_train]
+    train_idxs = train_idxs[0:n_train]
+    train_labels = train_labels[0:n_train]
+    aligned_test_images = aligned_test_images[0:n_test]
+    test_idxs = test_idxs[0:n_test]
+    test_labels = test_labels[0:n_test]
 
     train_cache = cache_contours(aligned_train_images, train_idxs)
     test_cache = cache_contours(aligned_test_images, test_idxs)
     dist_metric = img_haussdorff_distance_cached(train_cache, test_cache, ratio=0.25)
-    run_knn(train_idxs.reshape([-1, 1]), train_labels[0:n_train], test_idxs.reshape([-1, 1]), test_labels[0:n_test],
-            metric=dist_metric,
-            label='Raw_Haussdorff')
+    run_knn(train_idxs.reshape([-1, 1]), train_labels, test_idxs.reshape([-1, 1]), test_labels, metric=dist_metric,
+            label='Aligned_Haussdorff')
