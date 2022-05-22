@@ -7,7 +7,7 @@ def compute_hauss_dist(pts_1, pts_2, ratio=0.6):
     r2, c2 = pts_2.shape
 
     assert c1 == c2 == 2
-    assert 0 < ratio <= 1
+    assert 0 <= ratio <= 1
 
     p1_kth_eq_count = int(ratio * (r1 - 1))
     p2_kth_eq_count = int(ratio * (r2 - 1))
@@ -24,6 +24,8 @@ def compute_hauss_dist(pts_1, pts_2, ratio=0.6):
     max_min_along_row_opt = np.partition(np.max(dist_mat, axis=1), p1_kth_eq_count)[p1_kth_eq_count]
     max_min_along_col_opt = np.partition(np.max(dist_mat, axis=0), p2_kth_eq_count)[p2_kth_eq_count]
     distance = min(max_min_along_row_opt, max_min_along_col_opt) * -1
+
+    # distance = max(np.max(np.min(dist_mat, axis=1)), np.max(np.min(dist_mat, axis=0)))
 
     """
         # The operations below simulate how OpenCV calculates the Kth max!

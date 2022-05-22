@@ -6,11 +6,15 @@ def swap_cols(x):
     return np.array(x[:, [1, 0]])
 
 
-def get_contours(bin_image):
-    contours, hierarchy = cv2.findContours(bin_image, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+def get_contours(bin_image, method=cv2.CHAIN_APPROX_NONE):
+    contours, hierarchy = cv2.findContours(bin_image, cv2.RETR_LIST, method)
     return contours, hierarchy
 
 
-def sample_points_from_contour(contours):
+def sample_points_from_contour(contours, opencv_fmt=False):
     # Assumes that the input is a simplified contour.
-    return swap_cols(np.unique(np.vstack(contours).astype(np.uint16).reshape([-1, 2]), axis=0))
+    if opencv_fmt:
+        points = np.unique(np.vstack(contours).astype(np.uint16), axis=0)
+    else:
+        points = swap_cols(np.unique(np.vstack(contours).astype(np.uint16).reshape([-1, 2]), axis=0))
+    return points

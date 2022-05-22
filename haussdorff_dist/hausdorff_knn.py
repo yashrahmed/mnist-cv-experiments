@@ -9,15 +9,15 @@ from common.dataset_utils import load_actual_mnist
 from haussdorff_dist.distance import compute_hauss_dist
 
 
-def cache_contours(images, idxs):
+def cache_contours(images, idxs, opencv_fmt=False):
     cache = {}
     for i in range(1, images.shape[0] + 1):
-        cache[idxs[i - 1]] = find_contours(images[i - 1])
+        cache[idxs[i - 1]] = find_contours(images[i - 1], opencv_fmt)
     return cache
 
 
-def find_contours(img):
-    return sample_points_from_contour(get_contours(img)[0])
+def find_contours(img, opencv_fmt):
+    return sample_points_from_contour(get_contours(img, cv2.CHAIN_APPROX_NONE)[0], opencv_fmt)
 
 
 def img_haussdorff_distance_cached(train_contours, test_contours, ratio=0.2):
@@ -27,12 +27,26 @@ def img_haussdorff_distance_cached(train_contours, test_contours, ratio=0.2):
         contour_1 = train_contours[img_1_idx] if img_1_idx > 0 else test_contours[img_1_idx]
         contour_2 = train_contours[img_2_idx] if img_2_idx > 0 else test_contours[img_2_idx]
         return compute_hauss_dist(contour_1, contour_2, ratio=ratio)
+
+    return calculate
+
+
+def img_sc2_distance_cached(train_contours, test_contours, ratio=0.2):
+    extractor = cv2.createShapeContextDistanceExtractor()
+
+    # requires contours in opencv format [N, 1, 2]
+    def calculate(img_1_idx, img_2_idx):
+        img_1_idx = img_1_idx[0]
+        img_2_idx = img_2_idx[0]
+        contour_1 = train_contours[img_1_idx] if img_1_idx > 0 else test_contours[img_1_idx]
+        contour_2 = train_contours[img_2_idx] if img_2_idx > 0 else test_contours[img_2_idx]
+        return extractor.computeDistance(contour_1, contour_2)
+
     return calculate
 
 
 def pre_process_bbox(img):
-    proc_img = extract_bbox_region(threshold_image(img))
-    return proc_img
+    return extract_bbox_region(threshold_image(img))
 
 
 def run_knn(train_data, train_label, test_data, test_label, metric, neighbors=3, weights='distance', algo='brute',
@@ -52,11 +66,14 @@ def threshold_image(image, th=70):
 if __name__ == '__main__':
     train_images, train_labels, test_images, test_labels = load_actual_mnist()
 
-    n_train = train_labels.shape[0]
-    n_test = test_labels.shape[0]
+    # n_train = train_labels.shape[0]
+    # n_test = test_labels.shape[0]
 
-    aligned_train_images = np.array([img for img in train_images[0:n_train]])
-    aligned_test_images = np.array([img for img in test_images[0:n_test]])
+    n_train = 5000
+    n_test = 500
+
+    aligned_train_images = np.array([pre_process_bbox(img) for img in train_images[0:n_train]])
+    aligned_test_images = np.array([pre_process_bbox(img) for img in test_images[0:n_test]])
 
     train_idxs = np.array([i for i in range(1, n_train + 1)], dtype=np.int32)
     test_idxs = np.array([-i for i in range(1, n_test + 1)], dtype=np.int32)
