@@ -9,10 +9,11 @@ def get_bbox(image):
 
 
 def align_bbox(image, b_box):
+    offset = 2
     x1, y1, x2, y2 = b_box
     r, c = image.shape
     out_img = np.zeros([r, c], dtype=np.uint8)  # 2px padding
-    out_img[0: x2-x1, 0:y2-y1] = image[x1:x2, y1:y2]
+    out_img[offset:offset + (x2 - x1), offset:offset + (y2 - y1)] = image[x1:x2, y1:y2]
     return out_img
 
 
