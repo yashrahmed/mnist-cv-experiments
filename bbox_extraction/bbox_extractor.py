@@ -10,6 +10,11 @@ def get_bbox(image):
     return np.min(pts_x), np.min(pts_y), np.max(pts_x), np.max(pts_y)
 
 
+def get_bbox_of_points(points):
+    # points is a N X 2 array.
+    return np.min(points[:, 0]), np.min(points[:, 1]), np.max(points[:, 0]), np.max(points[:, 1])
+
+
 def align_bbox(image, b_box):
     offset = 2
     x1, y1, x2, y2 = b_box
