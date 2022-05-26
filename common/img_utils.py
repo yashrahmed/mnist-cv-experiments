@@ -7,7 +7,7 @@ def draw_rects_on_image(image, rects):
     assert len(image.shape) == 3  # Ensure that the input is a 3 channel image.
     for rectangle in rects:
         y1, x1, y2, x2 = rectangle
-        cv2.rectangle(image, (x1, y1), (x2, y2), (255, 0, 0), 1)
+        cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 1)
 
 
 def draw_contours_on_image(image, contours):
@@ -101,18 +101,6 @@ def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs
         _, idxs = kd_tree.query(scaled_points_query)
         return idxs
 
-    def render_desc(desc, label):
-        lowest = np.min(desc)
-        highest = np.max(desc)
-        pixels_per_desc = 20
-        desc_img = np.zeros([120, 240]).astype(np.uint8)
-        desc_array = desc.reshape([5, 12]).repeat(pixels_per_desc, axis=0).repeat(pixels_per_desc, axis=1)
-        desc_img = cv2.cvtColor(desc_img, cv2.COLOR_GRAY2BGR)
-        desc_img[0:100, :, 1] = np.interp(desc_array, [lowest, highest], [15, 255]).astype(np.uint8)
-        desc_img[0:100, :, 2] = desc_img[0:100, :, 1]
-        cv2.putText(desc_img, label, (100, 115), cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.6, color=magenta_color)
-        return desc_img
-
     def render_descs(tgt_desc, match_desc, best_cost_desc, nn_desc):
         desc_img_top = cv2.hconcat((render_desc(tgt_desc, 'tgt_desc'), render_desc(match_desc, 'matched_desc')))
         desc_img_bottom = cv2.hconcat((render_desc(best_cost_desc, 'low_cost_desc'), render_desc(nn_desc, 'NN_desc')))
@@ -127,7 +115,6 @@ def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs
     yellow_color = (0, 255, 255)
     green_color = (0, 255, 0)
     cyan_color = (255, 255, 0)
-    magenta_color = (255, 0, 255)
     pink_color = (203, 192, 255)
 
     assert img_1.shape == img_2.shape
@@ -204,6 +191,24 @@ def draw_matches_for_manual_viz(img_1, img_2, points_1, points_2, matches, costs
 
 def load_image(img_path):
     return cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2GRAY)
+
+
+def render_desc(desc, label, d_bin=5, t_bin=12):
+    magenta_color = (255, 0, 255)
+    lowest = np.min(desc)
+    highest = np.max(desc)
+    pixels_per_desc = 20
+
+    n_row_desc_arr = d_bin * pixels_per_desc
+    n_col_desc_arr = t_bin * pixels_per_desc
+    desc_array = desc.reshape([d_bin, t_bin]).repeat(pixels_per_desc, axis=0).repeat(pixels_per_desc, axis=1)
+    desc_img = np.zeros([n_row_desc_arr + 20, n_col_desc_arr]).astype(np.uint8)
+    desc_img = cv2.cvtColor(desc_img, cv2.COLOR_GRAY2BGR)
+    desc_img[:n_row_desc_arr, :, 1] = np.interp(desc_array, [lowest, highest], [15, 255]).astype(np.uint8)
+    desc_img[:n_row_desc_arr, :, 2] = desc_img[:n_row_desc_arr, :, 1]
+    cv2.putText(desc_img, label, (n_row_desc_arr, n_col_desc_arr), cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.6,
+                color=magenta_color)
+    return desc_img
 
 
 def show_image(image, disp_name='single'):
